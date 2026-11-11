@@ -1,0 +1,340 @@
+/* =========================================================
+   AWS re:Invent 2024 - Gestão de Eventos  |  Estilos próprios
+   (Tailwind cuida do restante; aqui ficam tema, vidro, tabela,
+   botões, certificado e impressão)
+   ========================================================= */
+
+:root {
+    --aws-orange: #ff9900;
+    --aws-orange-soft: #fb923c;
+    --ok: #4ade80;
+    --pending: #fb923c;
+}
+
+html { background: #070b14; }
+
+body {
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    background:
+        radial-gradient(900px 520px at 88% -8%, rgba(99, 102, 241, .30), transparent 60%),
+        radial-gradient(800px 520px at 6% 108%, rgba(56, 189, 248, .15), transparent 60%),
+        radial-gradient(600px 420px at 100% 100%, rgba(255, 153, 0, .09), transparent 60%),
+        linear-gradient(180deg, #0c1222 0%, #070b14 100%);
+    background-attachment: fixed;
+    position: relative;
+}
+
+/* "Rede" de pontos ao fundo, lembrando o clima do evento */
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image: radial-gradient(circle at 1px 1px, rgba(148, 163, 184, .16) 1px, transparent 0);
+    background-size: 30px 30px;
+    -webkit-mask-image: radial-gradient(ellipse at 50% 40%, transparent 25%, #000 100%);
+            mask-image: radial-gradient(ellipse at 50% 40%, transparent 25%, #000 100%);
+}
+
+h1, h2, h3, .font-display, .top-link, .rail-btn, .btn-aws, .btn-grey, .btn-add, .btn-row, .btn-cert {
+    font-family: 'Poppins', 'Inter', system-ui, sans-serif;
+}
+
+/* ---------- Cabeçalho ---------- */
+.app-header {
+    background: rgba(15, 23, 42, .88);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(100, 116, 139, .35);
+}
+
+.top-link {
+    position: relative;
+    height: 64px;
+    padding: 0 .75rem;
+    font-size: .92rem;
+    color: #e2e8f0;
+    white-space: nowrap;
+    transition: color .15s;
+}
+.top-link:hover { color: #fff; }
+.top-link.active { color: var(--aws-orange-soft); }
+.top-link.active::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 2px;
+    background: var(--aws-orange-soft);
+}
+
+/* ---------- Vidro (cartões) ---------- */
+.glass {
+    background: rgba(15, 23, 42, .74);
+    border: 1px solid rgba(100, 116, 139, .38);
+    border-radius: 1rem;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 20px 50px -20px rgba(0, 0, 0, .6);
+}
+
+/* ---------- Barra lateral ---------- */
+.side-rail { display: none; gap: .75rem; }
+body[data-rail="on"] .side-rail { display: flex; flex-direction: row; flex-wrap: wrap; }
+@media (min-width: 1024px) {
+    body[data-rail="on"] .side-rail { flex-direction: column; flex-wrap: nowrap; padding-top: 4.5rem; position: sticky; top: 5rem; align-self: flex-start; }
+}
+
+.rail-btn {
+    width: 84px;
+    height: 84px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .4rem;
+    font-size: 10px; letter-spacing: .04em; text-transform: uppercase;
+    color: #cbd5e1;
+    background: rgba(30, 41, 59, .72);
+    border: 1px solid rgba(100, 116, 139, .5);
+    border-radius: .9rem;
+    transition: all .15s;
+}
+.rail-btn svg { width: 28px; height: 28px; stroke-width: 1.6; }
+.rail-btn:hover { color: #fff; border-color: rgba(148, 163, 184, .8); }
+.rail-btn.active {
+    color: #4ade80;
+    border-color: #22c55e;
+    box-shadow: 0 0 0 1px rgba(34, 197, 94, .6), 0 0 18px rgba(34, 197, 94, .55);
+}
+
+/* ---------- Campos e botões ---------- */
+.field {
+    width: 100%;
+    background: rgba(15, 23, 42, .85);
+    border: 1px solid rgba(100, 116, 139, .6);
+    border-radius: .6rem;
+    padding: .55rem .8rem;
+    font-size: .875rem;
+    color: #f1f5f9;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+}
+.field::placeholder { color: #64748b; }
+.field:focus { border-color: #38bdf8; box-shadow: 0 0 0 3px rgba(56, 189, 248, .18); }
+select.field { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right .75rem center; padding-right: 2rem; }
+select.field option { background: #0f172a; color: #f1f5f9; }
+
+.field-label { display: block; font-size: .875rem; color: #e2e8f0; margin-bottom: .35rem; }
+
+.btn-aws {
+    background: var(--aws-orange);
+    color: #111827;
+    font-weight: 600;
+    border-radius: .55rem;
+    box-shadow: 0 0 20px rgba(255, 153, 0, .45);
+    transition: filter .15s, transform .05s;
+    display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+}
+.btn-aws:hover { filter: brightness(1.08); }
+.btn-aws:active { transform: scale(.99); }
+.btn-aws:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
+
+.btn-grey {
+    background: rgba(100, 116, 139, .55);
+    color: #f1f5f9;
+    padding: .55rem 1.4rem;
+    border-radius: .5rem;
+    transition: background .15s;
+}
+.btn-grey:hover { background: rgba(100, 116, 139, .8); }
+
+.btn-outline {
+    width: 100%;
+    background: rgba(15, 23, 42, .6);
+    border: 1px solid rgba(100, 116, 139, .6);
+    color: #f1f5f9;
+    padding: .6rem 1rem;
+    border-radius: .55rem;
+    font-weight: 500;
+    display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+    transition: border-color .15s, background .15s;
+}
+.btn-outline:hover { border-color: var(--aws-orange-soft); background: rgba(30, 41, 59, .8); }
+
+/* ---------- Inscritos ---------- */
+.tab-strip { border-bottom: 1px solid rgba(100, 116, 139, .4); }
+.tab-strip span {
+    display: inline-block;
+    padding: .55rem .25rem;
+    color: var(--aws-orange-soft);
+    border-bottom: 2px solid var(--aws-orange-soft);
+    margin-bottom: -1px;
+    font-family: 'Poppins', sans-serif;
+}
+
+.btn-add {
+    display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+    background: #0d1a35;
+    color: #fff;
+    border: 1px solid rgba(56, 189, 248, .55);
+    border-radius: .6rem;
+    padding: .65rem 1.1rem;
+    font-size: .8rem; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; white-space: nowrap;
+    box-shadow: 0 0 18px rgba(251, 146, 60, .4);
+    transition: filter .15s;
+}
+.btn-add:hover { filter: brightness(1.25); }
+
+.add-popover {
+    position: absolute; right: 0; top: calc(100% + .6rem); z-index: 40;
+    width: min(320px, calc(100vw - 2rem));
+    background: #111a2e;
+    border: 1px solid rgba(100, 116, 139, .6);
+    border-radius: .8rem;
+    padding: 1rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .8);
+}
+.add-popover h3 { font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .02em; margin-bottom: .75rem; }
+.add-popover label { display: block; font-size: .72rem; color: #cbd5e1; margin: .55rem 0 .2rem; }
+.add-popover .field { padding: .4rem .6rem; font-size: .8rem; border-radius: .4rem; }
+
+.tbl { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.tbl thead th {
+    text-align: left; padding: 1rem 1rem; font-size: .8rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .04em; color: #f1f5f9;
+    border-bottom: 1px solid rgba(100, 116, 139, .5);
+    font-family: 'Poppins', sans-serif;
+}
+.tbl tbody td { padding: .85rem 1rem; border-bottom: 1px solid rgba(100, 116, 139, .25); vertical-align: middle; }
+.tbl tbody tr:hover { background: rgba(30, 41, 59, .45); }
+.tbl tbody tr.row-editing { background: rgba(30, 41, 59, .6); }
+
+.status-ok { color: var(--ok); }
+.status-pending { color: var(--pending); }
+
+.btn-row, .btn-cert {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .45rem .8rem;
+    border-radius: .5rem;
+    font-size: .75rem; text-transform: uppercase; letter-spacing: .02em; color: #f1f5f9;
+    transition: all .15s;
+}
+.btn-row svg, .btn-cert svg { width: 15px; height: 15px; }
+.btn-row { background: rgba(30, 41, 59, .7); border: 1px solid rgba(100, 116, 139, .6); }
+.btn-row:hover, .btn-row.is-editing {
+    border-color: var(--aws-orange-soft); color: var(--aws-orange-soft);
+    box-shadow: 0 0 12px rgba(251, 146, 60, .35);
+}
+.btn-cert { background: rgba(14, 165, 233, .1); border: 1px solid rgba(56, 189, 248, .6); margin-left: .5rem; }
+.btn-cert svg { color: #4ade80; }
+.btn-cert:hover { background: rgba(14, 165, 233, .22); }
+.btn-cert.is-disabled { opacity: .45; }
+
+.edit-box {
+    background: #111a2e;
+    border: 1px solid var(--aws-orange-soft);
+    border-radius: .6rem;
+    padding: .6rem;
+    min-width: 230px;
+}
+.edit-box .field, .tbl .field { padding: .4rem .6rem; font-size: .85rem; border-radius: .4rem; }
+.btn-save { background: #2f8cf0; color: #fff; font-size: .8rem; padding: .35rem .9rem; border-radius: .4rem; font-weight: 500; }
+.btn-save:hover { filter: brightness(1.12); }
+.btn-ghost { color: #e2e8f0; font-size: .8rem; padding: .35rem .6rem; border-radius: .4rem; }
+.btn-ghost:hover { background: rgba(100, 116, 139, .3); }
+.btn-danger { color: #fb7185; font-size: .75rem; padding: .35rem .5rem; border-radius: .4rem; }
+.btn-danger:hover { background: rgba(244, 63, 94, .15); }
+
+/* ---------- Check-in: avisos ---------- */
+.alert-box { display: flex; align-items: center; gap: .75rem; padding: .85rem 1rem; border-radius: .75rem; font-size: .875rem; margin-top: 1.25rem; }
+.alert-success { background: rgba(16, 185, 129, .12); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, .35); }
+.alert-error   { background: rgba(244, 63, 94, .12);  color: #fda4af; border: 1px solid rgba(244, 63, 94, .35); }
+.alert-info    { background: rgba(245, 158, 11, .12); color: #fcd34d; border: 1px solid rgba(245, 158, 11, .35); }
+
+/* ---------- Toast ---------- */
+#toast-area { position: fixed; right: 1rem; bottom: 1rem; z-index: 100; display: flex; flex-direction: column; gap: .5rem; }
+.toast {
+    display: flex; align-items: center; gap: .6rem;
+    max-width: 360px; padding: .75rem 1rem; border-radius: .7rem; font-size: .85rem;
+    background: #111a2e; border: 1px solid rgba(100, 116, 139, .6); color: #f1f5f9;
+    box-shadow: 0 15px 35px -10px rgba(0, 0, 0, .7);
+    animation: toast-in .2s ease-out;
+}
+.toast.ok { border-color: rgba(34, 197, 94, .6); }
+.toast.error { border-color: rgba(244, 63, 94, .6); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* =========================================================
+   CERTIFICADO
+   Tudo em "em" a partir de um tamanho proporcional à largura
+   (unidade cqw), então escala igual na tela e na impressão.
+   ========================================================= */
+.cert-sheet {
+    container-type: inline-size;
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background: #fff;
+    color: #111827;
+    border-radius: .3rem;
+    overflow: hidden;
+}
+.cert-scale { position: absolute; inset: 0; font-size: 2.2cqw; line-height: 1.35; }
+
+.cert-frame-outer { position: absolute; inset: .7em; border: .1em solid #777; }
+.cert-frame-inner { position: absolute; inset: .28em; border: .28em double #777; }
+.cert-corner { position: absolute; width: 1.1em; height: 1.1em; background: #fff; border: .1em solid #777; border-radius: 50%; }
+.cert-corner.tl { top: .15em; left: .15em; }
+.cert-corner.tr { top: .15em; right: .15em; }
+.cert-corner.bl { bottom: .15em; left: .15em; }
+.cert-corner.br { bottom: .15em; right: .15em; }
+
+.cert-content {
+    position: absolute; inset: 1.26em;
+    display: flex; flex-direction: column;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300' fill='none' stroke='%23e6e6e6' stroke-width='1'%3E%3Cpath d='M0 120C80 60 140 180 220 120S340 60 400 110'/%3E%3Cpath d='M0 135C80 75 140 195 220 135S340 75 400 125'/%3E%3Cpath d='M0 150C80 90 140 210 220 150S340 90 400 140'/%3E%3Cpath d='M0 165C80 105 140 225 220 165S340 105 400 155'/%3E%3Cpath d='M0 180C80 120 140 240 220 180S340 120 400 170'/%3E%3Cpath d='M0 195C80 135 140 255 220 195S340 135 400 185'/%3E%3C/svg%3E");
+    background-size: 100% 100%;
+}
+
+.cert-band {
+    display: flex; align-items: center; justify-content: space-between;
+    height: 5.4em; padding: 0 3em;
+    background: linear-gradient(90deg, #d3d3d3, #f5f5f5 45%, #c8c8c8);
+}
+.cert-band-left { display: flex; flex-direction: column; line-height: 1; color: #232f3e; }
+.cert-band-left small { font-size: .62em; letter-spacing: .05em; font-weight: 600; }
+.cert-band-left strong { font-size: 2.3em; font-weight: 300; letter-spacing: -.01em; }
+.cert-aws { height: 3.4em; width: auto; color: #232f3e; }
+
+.cert-body { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 0 3.2em; }
+.cert-title { font-family: 'Noto Serif', Georgia, serif; font-weight: 700; font-size: 2.2em; letter-spacing: .02em; text-transform: uppercase; margin: 0 0 .85em; color: #111; }
+.cert-text { font-size: 1.02em; line-height: 1.7; max-width: 36em; color: #111; }
+
+.cert-signs { display: grid; grid-template-columns: 1fr 1fr; gap: 4em; padding: 0 4.5em; }
+.sig-name { font-family: 'Mrs Saint Delafield', 'Caveat', cursive; font-size: 2.7em; line-height: 1; text-align: center; border-bottom: .06em solid #666; padding-bottom: .05em; color: #111; }
+.sig-role { font-size: .72em; text-align: center; margin-top: .4em; color: #222; }
+
+.cert-foot { position: relative; display: flex; justify-content: center; align-items: flex-end; height: 5.6em; }
+.cert-qr { width: 5em; height: 5em; background: #fff; border: .1em solid #bbb; padding: .3em; position: relative; bottom: -.9em; }
+.cert-qr img { width: 100%; height: 100%; image-rendering: pixelated; display: block; }
+.cert-meta { position: absolute; right: 3em; bottom: 1.4em; text-align: right; font-size: .62em; line-height: 1.55; color: #111; }
+
+/* =========================================================
+   IMPRESSÃO: só o certificado, em A4 paisagem
+   ========================================================= */
+@page { size: A4 landscape; margin: 8mm; }
+
+@media print {
+    html, body { background: #fff !important; }
+    body::before { display: none !important; }
+
+    header, .side-rail, #page-head, #cert-controls, .cert-card-title, #toast-area,
+    .tab-content:not(#tab-certificados) { display: none !important; }
+
+    .cert-card { background: none !important; border: none !important; box-shadow: none !important; padding: 0 !important; backdrop-filter: none !important; }
+    #certificate-print-area { width: 250mm; margin: 0 auto; border-radius: 0; }
+
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+@media print {
+    .cert-wrap, .cert-layout, #page-root, #page-main { max-width: none !important; width: auto !important; margin: 0 !important; padding: 0 !important; display: block !important; }
+}
+
+/* Garante que "hidden" vença regras de display definidas acima */
+.hidden { display: none !important; }

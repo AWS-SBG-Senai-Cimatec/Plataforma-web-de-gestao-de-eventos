@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projeto de Gestao de eventos</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Gerador de QR Code (certificado) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+    <!-- Fontes -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Mrs+Saint+Delafield&family=Noto+Serif:wght@700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="Styles.css">
+</head>
+<body data-rail="off" class="text-slate-100 min-h-screen flex flex-col antialiased selection:bg-amber-500 selection:text-black">
+
+    <!-- (cabeçalho e certificado) 
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <symbol id="aws-logo" viewBox="0 0 64 34">
+            <text x="1" y="20" font-family="Poppins, Arial, sans-serif" font-weight="700" font-size="22" letter-spacing="-1" fill="currentColor">aws</text>
+            <path d="M6 25.5c14 7 34 6 47-3" fill="none" stroke="#FF9900" stroke-width="2.6" stroke-linecap="round"/>
+            <path d="M47.5 19.8l6.6 2.3-3 5.6" fill="none" stroke="#FF9900" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </symbol>
+    </svg>
+    -->
+    <!-- ======================= CABEÇALHO ======================= -->
+    <header class="app-header sticky top-0 z-50">
+        <div class="max-w-[1400px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+            
+            <!-- <div class="flex items-center gap-3 shrink-0">
+                <svg class="h-9 w-[68px] text-white"><use href="#aws-logo"/></svg>
+                <span class="hidden sm:block h-8 w-px bg-slate-600"></span>
+                <div class="hidden sm:block leading-none">
+                    <div class="text-[10px] font-semibold tracking-wider text-slate-400 uppercase">AWS</div>
+                </div>
+            </div>-->
+
+            <nav class="flex items-center gap-0 sm:gap-3 overflow-x-auto">
+                <button id="nav-home"          data-nav="home"          onclick="switchTab('checkin')"       class="top-link">Home</button>
+                <button id="nav-eventos"       data-nav="eventos"       onclick="switchTab('eventos')"       class="top-link">Eventos</button>
+                <button id="nav-inscritos"     data-nav="inscritos"     onclick="switchTab('inscritos')"     class="top-link active">Inscritos</button>
+                <button id="nav-relatorios"    data-nav="relatorios"    onclick="switchTab('relatorios')"    class="top-link">Relatórios</button>
+                <button id="nav-configuracoes" data-nav="configuracoes" onclick="switchTab('configuracoes')" class="top-link">Configurações</button>
+            </nav>
+
+            <div class="md:flex items-center gap-3 pl-4 border-l border-slate-700">
+                <div class="w-9 h-9 rounded-full bg-slate-600 flex items-center justify-center text-slate-300">
+                    <i data-lucide="user" class="w-5 h-5"></i>
+                </div>
+                <div class="leading-tight">
+                    <p class="text-sm font-medium text-slate-100 font-display">Raphael L.</p>
+                    <p class="text-[11px] text-slate-400">Administrador</p>
+                </div>
+                <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i>
+            </div>
+        </div>
+    </header>
+
+    <!-- ======================= CONTEÚDO ======================= -->
+    <div id="page-root" class="relative z-10 max-w-[1400px] w-full mx-auto px-4 sm:px-6 py-6 flex-1">
+
+        <div id="page-head" class="mb-6">
+            <h1 id="page-title" class="text-2xl md:text-[28px] font-semibold tracking-tight">Gestão de Eventos</h1>
+            <div class="mt-3 h-px bg-gradient-to-r from-slate-500/70 via-slate-600/40 to-transparent"></div>
+        </div>
+
+        <div id="page-main" class="flex flex-col lg:flex-row gap-6">
+
+            <!-- Barra lateral (Check-in / Relatórios / Configurações) -->
+            <aside class="side-rail" aria-label="Atalhos">
+                <button class="rail-btn" data-rail="checkin"       onclick="switchTab('checkin')">
+                    <i data-lucide="clipboard-check"></i><span>Check-in</span>
+                </button>
+                <button class="rail-btn" data-rail="relatorios"    onclick="switchTab('certificados')">
+                    <i data-lucide="trending-up"></i><span>Relatórios</span>
+                </button>
+                <button class="rail-btn" data-rail="configuracoes" onclick="switchTab('configuracoes')">
+                    <i data-lucide="settings"></i><span>Configurações</span>
+                </button>
+            </aside>
+
+            <main class="flex-1 min-w-0">
+
+                <!-- ============ ABA: INSCRITOS ============ -->
+                <section id="tab-inscritos" class="tab-content">
+                    <div class="tab-strip mb-5 text-[17px]"><span>Inscritos (Attendees)</span></div>
+
+                    <div class="glass p-4 sm:p-5">
+                        <!-- Barra de busca + adicionar -->
+                        <div class="flex flex-col sm:flex-row gap-3 mb-4">
+                            <div class="relative flex-1">
+                                <i data-lucide="cloud" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                                <input type="text" id="search-input" oninput="onSearch()" placeholder="Pesquisar por Nome, E-mail ou Empresa..." class="field !pl-10 !py-2.5 !text-[15px]">
+                            </div>
+
+                            <div id="add-wrapper" class="relative">
+                                <button type="button" onclick="toggleAddPopover()" class="btn-add w-full sm:w-auto">
+                                    <i data-lucide="plus" class="w-4 h-4"></i> Adicionar novo inscrito
+                                </button>
+
+                                <form id="add-popover" class="add-popover hidden" onsubmit="handleAddAttendee(event)" novalidate>
+                                    <h3>Adicionar novo inscrito</h3>
+                                    <label for="add-name">Nome completo</label>
+                                    <input type="text" id="add-name" class="field" placeholder="Digite o nome...">
+                                    <label for="add-cpf">CPF</label>
+                                    <input type="text" id="add-cpf" class="field font-mono" placeholder="000.000.000-00" maxlength="14" inputmode="numeric" oninput="formatCPF(this)">
+                                    <label for="add-email">E-mail</label>
+                                    <input type="email" id="add-email" class="field" placeholder="exemplo@empresa.com">
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label for="add-company">Empresa</label>
+                                            <input type="text" id="add-company" class="field">
+                                        </div>
+                                        <div>
+                                            <label for="add-sector">Setor</label>
+                                            <input type="text" id="add-sector" class="field">
+                                        </div>
+                                    </div>
+                                    <div class="flex justify-end items-center gap-3 mt-4">
+                                        <button type="button" onclick="toggleAddPopover(false)" class="text-xs uppercase text-slate-300 hover:text-white">Cancelar</button>
+                                        <button type="submit" class="btn-save !text-xs uppercase !px-3.5 !py-2">Adicionar</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Tabela -->
+                        <div class="overflow-x-auto">
+                            <table class="tbl">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Nome completo</th>
+                                        <th>E-mail</th>
+                                        <th>Empresa</th>
+                                        <th>Status</th>
+                                        <th class="!text-right !pr-2">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="attendees-table-body"></tbody>
+                            </table>
+                        </div>
+
+                        <div class="flex flex-wrap items-center justify-between gap-2 pt-4 text-xs text-slate-400">
+                            <span id="table-summary"></span>
+                            <button type="button" onclick="resetData()" class="hover:text-amber-400 underline-offset-2 hover:underline">Restaurar dados de exemplo</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============ ABA: CHECK-IN ============ -->
+                <section id="tab-checkin" class="tab-content hidden">
+                    <div class="glass max-w-[460px] mx-auto mt-4 sm:mt-14 p-6 sm:p-7">
+                        <h2 class="text-2xl font-semibold text-center mb-5">Check-in Rápido</h2>
+
+                        <form onsubmit="handleCheckIn(event)" novalidate>
+                            <label for="checkin-cpf" class="field-label">CPF do Participante</label>
+                            <input type="text" id="checkin-cpf" inputmode="numeric" autocomplete="off" maxlength="14"
+                                   placeholder="Digite o CPF (apenas números)" oninput="formatCPF(this)" class="field !text-base !py-2.5 font-mono placeholder:font-sans">
+                            <p class="text-xs text-slate-400 mt-2 ml-2 font-mono">xxx.xxx.xxx-xx</p>
+
+                            <button type="submit" class="btn-aws w-full mt-4 py-3 text-base">Confirmar Presença</button>
+
+                            <div class="text-center mt-4">
+                                <button type="button" onclick="cancelCheckIn()" class="btn-grey">Cancelar</button>
+                            </div>
+                        </form>
+
+                        <div id="checkin-alert" class="alert-box hidden" role="status"></div>
+                    </div>
+                </section>
+
+                <!-- ============ ABA: CERTIFICADOS ============ -->
+                <section id="tab-certificados" class="tab-content hidden">
+                    <div class="cert-layout grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
+
+                        <!-- Gerador / visualização -->
+                        <div class="cert-card glass p-5 sm:p-6 w-full max-w-[760px] justify-self-center">
+                            <h2 class="cert-card-title text-xl font-semibold mb-4">Gerador e Visualização de Certificado</h2>
+
+                            <div class="cert-wrap max-w-[640px] mx-auto">
+                                <div id="certificate-print-area" class="cert-sheet">
+                                    <div class="cert-scale">
+                                        <div class="cert-frame-outer"><div class="cert-frame-inner"></div></div>
+                                        <span class="cert-corner tl"></span><span class="cert-corner tr"></span>
+                                        <span class="cert-corner bl"></span><span class="cert-corner br"></span>
+
+                                        <div class="cert-content">
+                                            <div class="cert-band">
+                                                <div class="cert-band-left"><small>AWS</small><strong>re:Invent</strong></div>
+                                                <svg class="cert-aws" viewBox="0 0 64 34"><use href="#aws-logo"/></svg>
+                                            </div>
+
+                                            <div class="cert-body">
+                                                <h3 class="cert-title">Certificado de Participação</h3>
+                                                <p class="cert-text">
+                                                    O participante <strong id="preview-participant-name">Nome do Participante</strong>
+                                                    esteve presente no evento <strong id="preview-event-name"></strong>
+                                                    no dia <strong id="preview-date"></strong>,
+                                                    sobre <em id="preview-topics"></em>,
+                                                    acumulando um total de <strong id="preview-hours">8</strong> horas de conteúdo presencial.
+                                                </p>
+                                            </div>
+
+                                            <div class="cert-signs">
+                                                <div>
+                                                    <div class="sig-name">Ricardo Almeida</div>
+                                                    <div class="sig-role">Diretor de Eventos, AWS Americas</div>
+                                                </div>
+                                                <div>
+                                                    <div class="sig-name">Paulo Henrique</div>
+                                                    <div class="sig-role">Coordenador Técnico</div>
+                                                </div>
+                                            </div>
+
+                                            <div class="cert-foot">
+                                                <div class="cert-qr"><img id="preview-qr" alt="QR Code de validação"></div>
+                                                <div class="cert-meta">
+                                                    ID do Certificado: <strong id="preview-cert-id">—</strong><br>
+                                                    Data: <span id="preview-cert-date">—</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Painel de controles -->
+                        <div id="cert-controls" class="glass p-5 space-y-4">
+                            <div>
+                                <label for="cert-event-select" class="field-label">Selecionar evento</label>
+                                <select id="cert-event-select" onchange="onEventChange()" class="field"></select>
+                            </div>
+
+                            <div>
+                                <label for="cert-date" class="field-label">Data de emissão</label>
+                                <input type="date" id="cert-date" onchange="updateCertificatePreview()" class="field">
+                            </div>
+
+                            <div>
+                                <label for="cert-topics" class="field-label">Sumário de tópicos</label>
+                                <textarea id="cert-topics" rows="3" oninput="updateCertificatePreview()" class="field resize-none"></textarea>
+                            </div>
+
+                            <div>
+                                <label for="cert-participant-select" class="field-label">Participante</label>
+                                <select id="cert-participant-select" onchange="updateCertificatePreview()" class="field"></select>
+                                <div class="relative mt-2">
+                                    <input type="text" id="cert-search" oninput="populateCertificatesDropdown()" placeholder="Buscar / selecionar..." class="field !pr-9">
+                                    <i data-lucide="search" class="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                                </div>
+                                <p class="text-[11px] text-slate-500 mt-1.5">Só aparecem participantes com presença confirmada.</p>
+                            </div>
+
+                            <div class="pt-3 border-t border-slate-700/70 space-y-3">
+                                <h3 class="text-base font-semibold">Gerar Certificado</h3>
+                                <button type="button" onclick="emitCertificate()" class="btn-aws w-full py-3">Emitir e Visualizar</button>
+                                <button type="button" onclick="downloadPDF()" class="btn-outline">
+                                    <i data-lucide="download" class="w-4 h-4"></i> Baixar PDF
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============ MÓDULOS FORA DESTA ENTREGA ============ -->
+                <section id="tab-placeholder" class="tab-content hidden">
+                    <div class="glass max-w-[520px] mx-auto mt-10 p-8 text-center space-y-3">
+                        <div class="mx-auto w-12 h-12 rounded-full bg-slate-800 border border-slate-600 flex items-center justify-center text-amber-400">
+                            <i data-lucide="construction" class="w-6 h-6"></i>
+                        </div>
+                        <h2 class="text-xl font-semibold"><span id="placeholder-name">Módulo</span> em desenvolvimento</h2>
+                        <p class="text-sm text-slate-400">Esta área ainda não faz parte desta versão. Use <strong class="text-slate-200">Inscritos</strong>, <strong class="text-slate-200">Check-in</strong> e a emissão de <strong class="text-slate-200">Certificados</strong> (Relatórios na barra lateral).</p>
+                        <button type="button" onclick="switchTab('inscritos')" class="btn-grey mt-2">Ir para Inscritos</button>
+                    </div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+
+    <div id="toast-area" aria-live="polite"></div>
+
+    <script src="Script.js"></script>
+</body>
+</html>
