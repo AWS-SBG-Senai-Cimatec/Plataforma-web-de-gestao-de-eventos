@@ -1,6 +1,6 @@
 /* =========================================================
-   AWS re:Invent 2024 - Gestão de Eventos
-   Abas: Inscritos | Check-in | Certificados
+                  Projeto Gestão de Eventos
+   Abas: Inscritos | Check-in | Certificados | Relatórios
    ========================================================= */
 
 // ---------- Dados ----------
@@ -43,16 +43,20 @@ const EVENTS = [
 
 // Cada aba define: título da página, item ativo no menu superior e botão ativo na barra lateral
 const TAB_META = {
+    home:          { title: 'AWS Events Manager | Home',                 nav: 'home',          rail: null },
     inscritos:     { title: 'AWS Events Manager | Gestão de Inscritos',  nav: 'inscritos',     rail: null },
-    checkin:       { title: 'AWS Events Manager | Check-in Presencial',  nav: 'home',          rail: 'checkin' },
-    certificados:  { title: 'AWS re:Invent | Emissão de Certificados',   nav: 'home',          rail: 'relatorios' },
+    checkin:       { title: 'AWS Events Manager | Check-in Presencial',  nav: 'checkin',       rail: null },
+    certificados:  { title: 'AWS re:Invent | Emissão de Certificados',   nav: 'relatorios',    rail: null },
     eventos:       { title: 'AWS Events Manager | Eventos',              nav: 'eventos',       rail: null,            placeholder: 'Eventos' },
-    relatorios:    { title: 'AWS Events Manager | Relatórios',           nav: 'relatorios',    rail: null,            placeholder: 'Relatórios' },
-    configuracoes: { title: 'AWS Events Manager | Configurações',        nav: 'configuracoes', rail: 'configuracoes', placeholder: 'Configurações' }
+    relatorios:    { title: 'AWS Events Manager | Relatórios',           nav: 'relatorios',    rail: 'relatorios' },
+    configuracoes: { title: 'AWS Events Manager | Configurações',        nav: 'configuracoes', rail: null, placeholder: 'Configurações' }
 };
 
 let attendees = loadAttendees();
 let editingId = null;
+
+const FEEDBACK_KEY = 'aws-events-feedback-v1';
+let feedbacks = loadFeedbacks();
 
 // ---------- Utilitários ----------
 const $ = (id) => document.getElementById(id);
@@ -137,9 +141,15 @@ function switchTab(tabId) {
 
     editingId = null;
     toggleAddPopover(false);
+    toggleReportsPanel(false);
+
+    // Antes o código buscava #tab-home (inexistente) e quebrava aqui, antes de marcar o menu como ativo
+    const section = $(meta.placeholder ? 'tab-placeholder' : `tab-${tabId}`);
+    if (!section) return;
 
     document.querySelectorAll('.tab-content').forEach((s) => s.classList.add('hidden'));
-    $(meta.placeholder ? 'tab-placeholder' : `tab-${tabId}`).classList.remove('hidden');
+    section.classList.remove('hidden');
+    document.body.dataset.tab = tabId;
 
     $('page-title').textContent = meta.title;
     document.title = `${meta.title} - re:Invent 2024`;
@@ -151,6 +161,7 @@ function switchTab(tabId) {
     if (meta.placeholder) $('placeholder-name').textContent = meta.placeholder;
     if (tabId === 'inscritos') renderTable();
     if (tabId === 'certificados') populateCertificatesDropdown();
+    if (tabId === 'home') startHero(); else stopHero();
     if (tabId === 'checkin') setTimeout(() => $('checkin-cpf').focus(), 0);
 
     window.scrollTo({ top: 0 });
@@ -358,6 +369,7 @@ function deleteAttendee(id) {
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         toggleAddPopover(false);
+        toggleReportsPanel(false);
         if (editingId !== null) cancelEdit();
     }
     if (e.key === 'Enter' && editingId !== null && e.target.closest && e.target.closest('.row-editing') && e.target.tagName === 'INPUT') {
@@ -547,10 +559,146 @@ function openCertificate(id) {
     populateCertificatesDropdown(id);
 }
 
+// =========================================================
+// ABA RELATÓRIOS (feedback lido pelo administrador após o evento)
+// =========================================================
+function loadFeedbacks() {
+    try {
+        const raw = localStorage.getItem(FEEDBACK_KEY);
+        if (raw) {
+            const data = JSON.parse(raw);
+            if (Array.isArray(data)) return data;
+        }
+    } catch (e) { /* ignora: começa sem feedbacks */ }
+    return [];
+}
+
+function saveFeedbacks() {
+    try { localStorage.setItem(FEEDBACK_KEY, JSON.stringify(feedbacks)); } catch (e) { /* ignora */ }
+}
+
+function initFeedback() {
+    $('fb-event').innerHTML = EVENTS.map((e) => `<option value="${e.id}">${esc(e.name)}</option>`).join('');
+    updateFeedbackCounter();
+    renderFeedbackList();
+}
+
+function updateFeedbackCounter() {
+    $('fb-counter').textContent = `${$('fb-message').value.length}/1000`;
+}
+
+function handleFeedbackSubmit(event) {
+    event.preventDefault();
+    const message = $('fb-message').value.trim();
+    if (!message) {
+        toast('Escreva seu feedback antes de enviar.', 'error');
+        $('fb-message').focus();
+        return;
+    }
+    const ev = EVENTS.find((e) => e.id === $('fb-event').value) || EVENTS[0];
+    feedbacks.push({
+        id: feedbacks.length ? Math.max(...feedbacks.map((f) => f.id)) + 1 : 1,
+        eventId: ev.id,
+        eventName: ev.name,
+        author: $('fb-author').value.trim(),
+        message,
+        createdAt: new Date().toISOString()
+    });
+    saveFeedbacks();
+
+    $('feedback-form').reset();
+    updateFeedbackCounter();
+    renderFeedbackList();
+    toast('Feedback enviado. O administrador poderá lê-lo após o evento.', 'ok');
+}
+
+function renderFeedbackList() {
+    const list = [...feedbacks].sort((a, b) => b.id - a.id); // mais recentes primeiro
+    $('reports-count').textContent = list.length;
+    $('reports-count').classList.toggle('hidden', list.length === 0);
+    $('reports-panel-title').textContent = `Feedbacks recebidos (${list.length})`;
+
+    $('reports-list').innerHTML = list.length === 0
+        ? `<div class="fb-empty"><i data-lucide="inbox"></i>Nenhum feedback enviado ainda.</div>`
+        : list.map((f) => {
+            const when = new Date(f.createdAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+            return `
+            <article class="fb-item">
+                <div class="fb-event">${esc(f.eventName)}</div>
+                <p class="fb-msg">${esc(f.message)}</p>
+                <div class="fb-meta">${esc(f.author || 'Anônimo')} • ${esc(when)}</div>
+            </article>`;
+        }).join('');
+    refreshIcons();
+}
+
+function toggleReportsPanel(force) {
+    const panel = $('reports-panel');
+    if (!panel) return;
+    const open = typeof force === 'boolean' ? force : panel.classList.contains('hidden');
+    panel.classList.toggle('hidden', !open);
+    $('reports-toggle').setAttribute('aria-expanded', String(open));
+    $('reports-toggle-label').textContent = open ? 'Fechar relatórios' : 'Abrir relatórios';
+    if (open) renderFeedbackList();
+}
+
+// =========================================================
+// ABA HOME (carrossel de eventos passados)
+// Para usar fotos reais, salve os arquivos na pasta img/ com os nomes abaixo
+// (ou troque os caminhos). Sem a imagem, o degradê da slide aparece no lugar.
+// =========================================================
+const HOME_SLIDES = [
+    { img: 'img/reinvent-2024.jpg', title: 'AWS re:Invent 2024', meta: 'Las Vegas • 2 a 6 de dezembro de 2024',   tint: 'linear-gradient(135deg,#1e1b4b,#4338ca 55%,#ff9900)' },
+    { img: 'img/reinvent-2023.jpg', title: 'AWS re:Invent 2023', meta: 'Las Vegas • 27 de novembro a 1 de dezembro de 2023', tint: 'linear-gradient(135deg,#0c4a6e,#0ea5e9 55%,#6366f1)' },
+    { img: 'img/reinvent-2022.jpg', title: 'AWS re:Invent 2022', meta: 'Las Vegas • novembro e dezembro de 2022', tint: 'linear-gradient(135deg,#312e81,#7c3aed 55%,#fb923c)' },
+    { img: 'img/summit-sao-paulo.jpg', title: 'AWS Summit São Paulo', meta: 'Evento anual da AWS no Brasil',   tint: 'linear-gradient(135deg,#064e3b,#10b981 55%,#38bdf8)' }
+];
+
+let heroIndex = 0;
+let heroTimer = null;
+
+function initHome() {
+    $('hero-slides').innerHTML = HOME_SLIDES.map((s, i) =>
+        `<div class="hero-slide" style="background-image:url('${s.img}'),${s.tint}" aria-hidden="${i !== 0}"></div>`
+    ).join('');
+    $('hero-dots').innerHTML = HOME_SLIDES.map((s, i) =>
+        `<button type="button" class="hero-dot" onclick="goToSlide(${i})" aria-label="Ir para ${esc(s.title)}"></button>`
+    ).join('');
+    showSlide(0);
+}
+
+function showSlide(i) {
+    const n = HOME_SLIDES.length;
+    heroIndex = (i + n) % n;
+    document.querySelectorAll('.hero-slide').forEach((el, k) => {
+        el.classList.toggle('is-active', k === heroIndex);
+        el.setAttribute('aria-hidden', k !== heroIndex);
+    });
+    document.querySelectorAll('.hero-dot').forEach((el, k) => el.classList.toggle('is-active', k === heroIndex));
+    $('hero-caption-title').textContent = HOME_SLIDES[heroIndex].title;
+    $('hero-caption-meta').textContent = HOME_SLIDES[heroIndex].meta;
+}
+
+function goToSlide(i) { showSlide(i); startHero(); }
+
+function startHero() {
+    stopHero();
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    heroTimer = setInterval(() => showSlide(heroIndex + 1), 5500);
+}
+
+function stopHero() { clearInterval(heroTimer); heroTimer = null; }
+
 // ---------- Inicialização ----------
 document.addEventListener('DOMContentLoaded', () => {
     initCertificateForm();
     populateCertificatesDropdown();
-    switchTab('inscritos');
+    initHome();
+    initFeedback();
+    switchTab('home');
     refreshIcons();
+
+    const hero = document.querySelector('.hero');
+    hero.addEventListener('mouseenter', stopHero);
+    hero.addEventListener('mouseleave', () => { if (document.body.dataset.tab === 'home') startHero(); });
 });
