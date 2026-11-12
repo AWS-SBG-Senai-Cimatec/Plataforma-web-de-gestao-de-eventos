@@ -336,5 +336,116 @@ select.field option { background: #0f172a; color: #f1f5f9; }
     .cert-wrap, .cert-layout, #page-root, #page-main { max-width: none !important; width: auto !important; margin: 0 !important; padding: 0 !important; display: block !important; }
 }
 
+/* =========================================================
+   HOME: carrossel de fundo + texto sobre a AWS
+   ========================================================= */
+body[data-tab="home"] #page-head { display: none; }
+
+.hero {
+    position: relative; overflow: hidden; isolation: isolate;
+    min-height: min(78vh, 720px);
+    display: flex; flex-direction: column; justify-content: flex-end;
+    border-radius: 1.1rem; border: 1px solid rgba(100, 116, 139, .38);
+    box-shadow: 0 20px 50px -20px rgba(0, 0, 0, .6);
+    background: #0c1222;
+}
+.hero-slides, .hero-shade { position: absolute; inset: 0; z-index: -2; }
+.hero-slide {
+    position: absolute; inset: 0;
+    background-size: cover; background-position: center;
+    opacity: 0; transform: scale(1);
+    transition: opacity 1.2s ease;
+}
+.hero-slide.is-active { opacity: 1; animation: hero-zoom 7s ease-out forwards; }
+@keyframes hero-zoom { from { transform: scale(1); } to { transform: scale(1.07); } }
+.hero-shade {
+    z-index: -1;
+    background:
+        linear-gradient(90deg, rgba(7, 11, 20, .92) 0%, rgba(7, 11, 20, .72) 45%, rgba(7, 11, 20, .25) 100%),
+        linear-gradient(0deg, rgba(7, 11, 20, .85) 0%, transparent 40%);
+}
+
+.hero-content { padding: clamp(1.5rem, 4vw, 3.5rem); max-width: 46rem; }
+.hero-eyebrow { font-family: 'Poppins', sans-serif; font-size: .8rem; letter-spacing: .14em; text-transform: uppercase; color: var(--aws-orange); margin-bottom: .6rem; }
+.hero-title { font-size: clamp(2rem, 5vw, 3.4rem); font-weight: 700; line-height: 1.1; letter-spacing: -.02em; margin-bottom: 1rem; }
+.hero-text { color: #e2e8f0; font-size: clamp(.92rem, 1.3vw, 1.05rem); line-height: 1.7; margin-bottom: .8rem; }
+.hero-text strong { color: #fff; }
+
+.hero-ctrl {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem;
+    padding: 1rem clamp(1.5rem, 4vw, 3.5rem);
+    border-top: 1px solid rgba(148, 163, 184, .25);
+    background: rgba(7, 11, 20, .55); backdrop-filter: blur(6px);
+}
+.hero-caption { display: flex; flex-direction: column; line-height: 1.35; }
+.hero-caption strong { font-family: 'Poppins', sans-serif; font-size: .95rem; }
+.hero-caption span { font-size: .78rem; color: #94a3b8; }
+.hero-arrow {
+    width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%;
+    color: #e2e8f0; background: rgba(30, 41, 59, .7); border: 1px solid rgba(100, 116, 139, .6);
+    transition: border-color .15s, color .15s;
+}
+.hero-arrow:hover { color: var(--aws-orange-soft); border-color: var(--aws-orange-soft); }
+.hero-arrow svg { width: 18px; height: 18px; }
+.hero-dot { width: 9px; height: 9px; border-radius: 999px; background: rgba(148, 163, 184, .5); transition: all .25s; }
+.hero-dot.is-active { width: 26px; background: var(--aws-orange); }
+
+@media (prefers-reduced-motion: reduce) {
+    .hero-slide { transition: none; }
+    .hero-slide.is-active { animation: none; }
+}
+
 /* Garante que "hidden" vença regras de display definidas acima */
 .hidden { display: none !important; }
+
+/* =========================================================
+   RELATÓRIOS: feedback + botão fixo + lista
+   ========================================================= */
+#tab-relatorios { padding-bottom: 5rem; }
+/* O botão fixo ocupa o canto inferior direito, então os avisos vão para a esquerda */
+body[data-tab="relatorios"] #toast-area { right: auto; left: 1rem; }
+
+.fb-fab {
+    position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 60;
+    display: inline-flex; align-items: center; gap: .6rem;
+    padding: .8rem 1.2rem;
+    font-family: 'Poppins', 'Inter', system-ui, sans-serif; font-size: .85rem; font-weight: 600;
+    color: #111827; background: var(--aws-orange);
+    border-radius: 999px;
+    box-shadow: 0 0 22px rgba(255, 153, 0, .45), 0 10px 25px -8px rgba(0, 0, 0, .7);
+    transition: filter .15s, transform .05s;
+}
+.fb-fab:hover { filter: brightness(1.08); }
+.fb-fab:active { transform: scale(.98); }
+.fb-fab svg { width: 18px; height: 18px; }
+.fb-badge {
+    min-width: 1.4rem; height: 1.4rem; padding: 0 .4rem;
+    display: inline-grid; place-items: center;
+    border-radius: 999px; background: #111827; color: #fff; font-size: .72rem;
+}
+
+.fb-panel {
+    position: fixed; right: 1.25rem; bottom: 5.25rem; z-index: 60;
+    width: min(440px, calc(100vw - 2.5rem)); max-height: min(70vh, 560px);
+    display: flex; flex-direction: column;
+    background: #111a2e; border: 1px solid rgba(100, 116, 139, .6); border-radius: .9rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .8);
+    overflow: hidden;
+    animation: toast-in .18s ease-out;
+}
+.fb-panel-head {
+    display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+    padding: .9rem 1rem; border-bottom: 1px solid rgba(100, 116, 139, .4);
+}
+.fb-panel-head h3 { font-size: .85rem; font-weight: 600; }
+.fb-close { color: #94a3b8; padding: .25rem; border-radius: .4rem; }
+.fb-close:hover { color: #fff; background: rgba(100, 116, 139, .3); }
+.fb-close svg { width: 16px; height: 16px; }
+
+.fb-list { overflow-y: auto; padding: .75rem; display: flex; flex-direction: column; gap: .6rem; }
+.fb-item { background: rgba(30, 41, 59, .6); border: 1px solid rgba(100, 116, 139, .35); border-radius: .7rem; padding: .75rem .9rem; }
+.fb-event { font-size: .75rem; font-weight: 600; color: var(--aws-orange-soft); }
+.fb-msg { margin: .35rem 0 .5rem; font-size: .875rem; line-height: 1.55; color: #e2e8f0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.fb-meta { font-size: .75rem; color: #94a3b8; }
+.fb-empty { text-align: center; padding: 2rem 1rem; color: #94a3b8; font-size: .875rem; }
+.fb-empty svg { width: 32px; height: 32px; margin: 0 auto .5rem; stroke-width: 1.4; color: #64748b; }
