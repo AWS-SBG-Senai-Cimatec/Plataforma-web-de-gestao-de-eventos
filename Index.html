@@ -42,9 +42,10 @@
             </div>-->
 
             <nav class="flex items-center gap-0 sm:gap-3 overflow-x-auto">
-                <button id="nav-home"          data-nav="home"          onclick="switchTab('checkin')"       class="top-link">Home</button>
+                <button id="nav-home"          data-nav="home"          onclick="switchTab('home')"          class="top-link">Home</button>
                 <button id="nav-eventos"       data-nav="eventos"       onclick="switchTab('eventos')"       class="top-link">Eventos</button>
-                <button id="nav-inscritos"     data-nav="inscritos"     onclick="switchTab('inscritos')"     class="top-link active">Inscritos</button>
+                <button id="nav-checkin"       data-nav="checkin"       onclick="switchTab('checkin')"       class="top-link">Check-in</button>
+                <button id="nav-inscritos"     data-nav="inscritos"     onclick="switchTab('inscritos')"     class="top-link">Inscritos</button>
                 <button id="nav-relatorios"    data-nav="relatorios"    onclick="switchTab('relatorios')"    class="top-link">Relatórios</button>
                 <button id="nav-configuracoes" data-nav="configuracoes" onclick="switchTab('configuracoes')" class="top-link">Configurações</button>
             </nav>
@@ -72,20 +73,57 @@
 
         <div id="page-main" class="flex flex-col lg:flex-row gap-6">
 
-            <!-- Barra lateral (Check-in / Relatórios / Configurações) -->
+            <!-- Barra lateral (Relatórios / Certificados) -->
             <aside class="side-rail" aria-label="Atalhos">
-                <button class="rail-btn" data-rail="checkin"       onclick="switchTab('checkin')">
-                    <i data-lucide="clipboard-check"></i><span>Check-in</span>
-                </button>
-                <button class="rail-btn" data-rail="relatorios"    onclick="switchTab('certificados')">
+                <button class="rail-btn" data-rail="relatorios"   onclick="switchTab('relatorios')">
                     <i data-lucide="trending-up"></i><span>Relatórios</span>
                 </button>
-                <button class="rail-btn" data-rail="configuracoes" onclick="switchTab('configuracoes')">
-                    <i data-lucide="settings"></i><span>Configurações</span>
+                <button class="rail-btn" data-rail="certificados" onclick="switchTab('certificados')">
+                    <i data-lucide="file-check"></i><span>Certificados</span>
                 </button>
             </aside>
 
             <main class="flex-1 min-w-0">
+
+                <!-- ============ ABA: HOME ============ -->
+                <section id="tab-home" class="tab-content hidden">
+                    <div class="hero" role="region" aria-roledescription="carrossel" aria-label="Eventos passados da AWS">
+                        <div id="hero-slides" class="hero-slides"></div>
+                        <div class="hero-shade"></div>
+
+                        <div class="hero-content">
+                            <p class="hero-eyebrow">Amazon Web Services</p>
+                            <h2 class="hero-title">O que é a AWS?</h2>
+                            <p class="hero-text">
+                                A <strong>AWS (Amazon Web Services)</strong> é a plataforma de nuvem da Amazon, lançada em 2006.
+                                Em vez de comprar e manter servidores próprios, empresas, startups e governos alugam sob demanda
+                                computação, armazenamento, bancos de dados, redes, segurança e inteligência artificial,
+                                pagando apenas pelo que usam. A infraestrutura fica distribuída em regiões ao redor do mundo,
+                                o que permite crescer rápido, com alta disponibilidade.
+                            </p>
+                            <p class="hero-text">
+                                Todo ano a AWS reúne a comunidade em eventos como o <strong>re:Invent</strong>, em Las Vegas,
+                                com palestras, workshops e lançamentos. Esta plataforma cuida das inscrições, do check-in e dos certificados desses eventos.
+                            </p>
+                            <div class="flex flex-wrap gap-3 mt-6">
+                                <button type="button" onclick="switchTab('inscritos')" class="btn-aws px-5 py-2.5">Ver inscritos</button>
+                                <button type="button" onclick="switchTab('checkin')" class="btn-outline !w-auto">Fazer check-in</button>
+                            </div>
+                        </div>
+
+                        <div class="hero-ctrl">
+                            <div class="hero-caption" aria-live="polite">
+                                <strong id="hero-caption-title"></strong>
+                                <span id="hero-caption-meta"></span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button type="button" class="hero-arrow" onclick="goToSlide(heroIndex - 1)" aria-label="Slide anterior"><i data-lucide="chevron-left"></i></button>
+                                <div id="hero-dots" class="flex items-center gap-2"></div>
+                                <button type="button" class="hero-arrow" onclick="goToSlide(heroIndex + 1)" aria-label="Próximo slide"><i data-lucide="chevron-right"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
 
                 <!-- ============ ABA: INSCRITOS ============ -->
                 <section id="tab-inscritos" class="tab-content">
@@ -270,6 +308,48 @@
                     </div>
                 </section>
 
+                <!-- ============ ABA: RELATÓRIOS (FEEDBACK) ============ -->
+                <section id="tab-relatorios" class="tab-content hidden">
+                    <div class="tab-strip mb-5 text-[17px]"><span>Relatórios (Feedback do evento)</span></div>
+
+                    <div class="glass max-w-[720px] mx-auto p-5 sm:p-6">
+                        <h2 class="text-xl font-semibold mb-1">Escreva seu feedback</h2>
+                        <p class="text-sm text-slate-400 mb-5">Conte como foi sua experiência. O administrador vai ler o seu comentário após o evento.</p>
+
+                        <form id="feedback-form" onsubmit="handleFeedbackSubmit(event)" novalidate class="space-y-4">
+                            <div>
+                                <label for="fb-event" class="field-label">Evento</label>
+                                <select id="fb-event" class="field"></select>
+                            </div>
+                            <div>
+                                <label for="fb-author" class="field-label">Seu nome <span class="text-slate-500">(opcional)</span></label>
+                                <input type="text" id="fb-author" class="field" maxlength="80" placeholder="Em branco, o feedback é enviado como anônimo">
+                            </div>
+                            <div>
+                                <label for="fb-message" class="field-label">Feedback</label>
+                                <textarea id="fb-message" rows="6" maxlength="1000" oninput="updateFeedbackCounter()" class="field resize-none" placeholder="O que funcionou bem? O que pode melhorar?"></textarea>
+                                <p id="fb-counter" class="text-[11px] text-slate-500 mt-1 text-right">0/1000</p>
+                            </div>
+                            <button type="submit" class="btn-aws w-full py-3"><i data-lucide="send" class="w-4 h-4"></i> Enviar feedback</button>
+                        </form>
+                    </div>
+
+                    <!-- Botão fixo (canto inferior direito) e lista de feedbacks -->
+                    <button type="button" id="reports-toggle" class="fb-fab" onclick="toggleReportsPanel()" aria-expanded="false" aria-controls="reports-panel">
+                        <i data-lucide="clipboard-list"></i>
+                        <span id="reports-toggle-label">Abrir relatórios</span>
+                        <span id="reports-count" class="fb-badge hidden">0</span>
+                    </button>
+
+                    <div id="reports-panel" class="fb-panel hidden" role="dialog" aria-label="Feedbacks recebidos">
+                        <div class="fb-panel-head">
+                            <h3 id="reports-panel-title">Feedbacks recebidos</h3>
+                            <button type="button" class="fb-close" onclick="toggleReportsPanel(false)" aria-label="Fechar lista"><i data-lucide="x"></i></button>
+                        </div>
+                        <div id="reports-list" class="fb-list"></div>
+                    </div>
+                </section>
+
                 <!-- ============ MÓDULOS FORA DESTA ENTREGA ============ -->
                 <section id="tab-placeholder" class="tab-content hidden">
                     <div class="glass max-w-[520px] mx-auto mt-10 p-8 text-center space-y-3">
@@ -277,7 +357,7 @@
                             <i data-lucide="construction" class="w-6 h-6"></i>
                         </div>
                         <h2 class="text-xl font-semibold"><span id="placeholder-name">Módulo</span> em desenvolvimento</h2>
-                        <p class="text-sm text-slate-400">Esta área ainda não faz parte desta versão. Use <strong class="text-slate-200">Inscritos</strong>, <strong class="text-slate-200">Check-in</strong> e a emissão de <strong class="text-slate-200">Certificados</strong> (Relatórios na barra lateral).</p>
+                        <p class="text-sm text-slate-400">Esta área ainda não faz parte desta versão. Use <strong class="text-slate-200">Inscritos</strong>, <strong class="text-slate-200">Check-in</strong>, <strong class="text-slate-200">Relatórios</strong> e a emissão de <strong class="text-slate-200">Certificados</strong>.</p>
                         <button type="button" onclick="switchTab('inscritos')" class="btn-grey mt-2">Ir para Inscritos</button>
                     </div>
                 </section>
