@@ -5,6 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Projeto de Gestao de eventos</title>
 
+    <script>
+        /* Aplica tema e tamanhos salvos antes da página aparecer (evita "piscar" no tema escuro) */
+        (function () {
+            try {
+                var s = JSON.parse(localStorage.getItem('aws-events-settings-v1') || 'null');
+                var u = (s && s.ui) || {};
+                var t = u.theme || 'dark';
+                if (t === 'auto') t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+                var r = document.documentElement;
+                r.dataset.theme = t === 'light' ? 'light' : 'dark';
+                if (Number(u.text) >= 12 && Number(u.text) <= 24) r.style.fontSize = Number(u.text) + 'px';
+                if (Number(u.hud) >= 80 && Number(u.hud) <= 140) r.style.setProperty('--hud-zoom', Number(u.hud) / 100);
+            } catch (e) { document.documentElement.dataset.theme = 'dark'; }
+        })();
+    </script>
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons -->
@@ -50,16 +66,14 @@
                 <button id="nav-configuracoes" data-nav="configuracoes" onclick="switchTab('configuracoes')" class="top-link">Configurações</button>
             </nav>
 
-            <div class="md:flex items-center gap-3 pl-4 border-l border-slate-700">
-                <div class="w-9 h-9 rounded-full bg-slate-600 flex items-center justify-center text-slate-300">
-                    <i data-lucide="user" class="w-5 h-5"></i>
-                </div>
-                <div class="leading-tight">
-                    <p class="text-sm font-medium text-slate-100 font-display">Raphael L.</p>
-                    <p class="text-[11px] text-slate-400">Administrador</p>
+            <button type="button" onclick="openSettings('perfil')" class="flex items-center gap-3 pl-4 border-l border-slate-700 text-left shrink-0" aria-label="Abrir perfil do usuário" title="Perfil e configurações">
+                <div id="user-avatar" class="w-9 h-9 rounded-full bg-slate-600 flex items-center justify-center text-slate-300"></div>
+                <div class="leading-tight hidden sm:block">
+                    <p id="user-name" class="text-sm font-medium text-slate-100 font-display">Raphael L.</p>
+                    <p id="user-role" class="text-[11px] text-slate-400">Administrador</p>
                 </div>
                 <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i>
-            </div>
+            </button>
         </div>
     </header>
 
@@ -248,12 +262,12 @@
 
                                             <div class="cert-signs">
                                                 <div>
-                                                    <div class="sig-name">Ricardo Almeida</div>
-                                                    <div class="sig-role">Diretor de Eventos, AWS Americas</div>
+                                                    <div id="sig1-name" class="sig-name">Ricardo Almeida</div>
+                                                    <div id="sig1-role" class="sig-role">Diretor de Eventos, AWS Americas</div>
                                                 </div>
                                                 <div>
-                                                    <div class="sig-name">Paulo Henrique</div>
-                                                    <div class="sig-role">Coordenador Técnico</div>
+                                                    <div id="sig2-name" class="sig-name">Paulo Henrique</div>
+                                                    <div id="sig2-role" class="sig-role">Coordenador Técnico</div>
                                                 </div>
                                             </div>
 
@@ -347,6 +361,358 @@
                             <button type="button" class="fb-close" onclick="toggleReportsPanel(false)" aria-label="Fechar lista"><i data-lucide="x"></i></button>
                         </div>
                         <div id="reports-list" class="fb-list"></div>
+                    </div>
+                </section>
+
+                <!-- ============ ABA: CONFIGURAÇÕES ============ -->
+                <section id="tab-configuracoes" class="tab-content hidden">
+                    <div class="tab-strip mb-5 text-[17px]"><span>Ajustes e Personalização da Plataforma</span></div>
+
+                    <div class="cfg-layout">
+                        <!-- Categorias (abas verticais) -->
+                        <nav class="cfg-nav" role="tablist" aria-label="Categorias de configuração">
+                            <button type="button" class="cfg-tab active" role="tab" data-cfg-tab="sistema" onclick="showCfgPane('sistema')">
+                                <i data-lucide="sliders-horizontal"></i><span>Sistema</span><b class="cfg-dot"></b>
+                            </button>
+                            <button type="button" class="cfg-tab" role="tab" data-cfg-tab="perfil" onclick="showCfgPane('perfil')">
+                                <i data-lucide="user"></i><span>Perfil</span><b class="cfg-dot"></b>
+                            </button>
+                            <button type="button" class="cfg-tab" role="tab" data-cfg-tab="email" onclick="showCfgPane('email')">
+                                <i data-lucide="mail"></i><span>E-mail</span><b class="cfg-dot"></b>
+                            </button>
+                            <button type="button" class="cfg-tab" role="tab" data-cfg-tab="certificado" onclick="showCfgPane('certificado')">
+                                <i data-lucide="award"></i><span>Certificado</span><b class="cfg-dot"></b>
+                            </button>
+                            <button type="button" class="cfg-tab" role="tab" data-cfg-tab="notificacoes" onclick="showCfgPane('notificacoes')">
+                                <i data-lucide="bell"></i><span>Notificações</span><b class="cfg-dot"></b>
+                            </button>
+                            <button type="button" class="cfg-tab" role="tab" data-cfg-tab="seguranca" onclick="showCfgPane('seguranca')">
+                                <i data-lucide="shield"></i><span>Segurança</span><b class="cfg-dot"></b>
+                            </button>
+                        </nav>
+
+                        <!-- Painel -->
+                        <form id="cfg-panel" class="cfg-panel" onsubmit="saveSettings(event)" novalidate>
+                            <h2 class="cfg-title">Painel de Configurações do Sistema</h2>
+
+                            <!-- ===== SISTEMA ===== -->
+                            <div class="cfg-pane" data-pane="sistema">
+                                <h3 class="cfg-sec-title">Personalização da Interface
+                                    <i data-lucide="info" class="w-4 h-4 text-sky-500" title="As mudanças visuais são aplicadas ao vivo. Clique em Salvar Alterações para mantê-las."></i>
+                                </h3>
+
+                                <div class="cfg-grid cols-3">
+                                    <div>
+                                        <label class="cfg-label" for="cfg-event-name">Nome do Evento Principal</label>
+                                        <input type="text" id="cfg-event-name" class="field" maxlength="90" data-cfg="event.name">
+                                    </div>
+                                    <div>
+                                        <label class="cfg-label" for="cfg-theme">Tema Visual</label>
+                                        <select id="cfg-theme" class="field" data-cfg="ui.theme">
+                                            <option value="dark">Escuro (Dark)</option>
+                                            <option value="light">Claro (Light)</option>
+                                            <option value="auto">Automático (sistema)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="cfg-label" for="cfg-language">Idioma do Sistema</label>
+                                        <select id="cfg-language" class="field" data-cfg="ui.language">
+                                            <option value="pt-BR">Português (BR)</option>
+                                            <option value="en-US">Inglês</option>
+                                            <option value="es-ES">Espanhol</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <p class="cfg-hint">O idioma define o formato de datas e o idioma do documento. A tradução completa dos textos da interface ainda não está incluída.</p>
+
+                                <div class="cfg-grid mt-4">
+                                    <div>
+                                        <span class="cfg-label">Tamanho da interface (HUD)</span>
+                                        <div class="seg" role="radiogroup" aria-label="Tamanho da interface">
+                                            <label><input type="radio" name="cfg-hud" value="90"  data-cfg="ui.hud"><span>Compacto</span></label>
+                                            <label><input type="radio" name="cfg-hud" value="100" data-cfg="ui.hud"><span>Padrão</span></label>
+                                            <label><input type="radio" name="cfg-hud" value="112" data-cfg="ui.hud"><span>Grande</span></label>
+                                            <label><input type="radio" name="cfg-hud" value="125" data-cfg="ui.hud"><span>Extra</span></label>
+                                        </div>
+                                        <p class="cfg-hint">Amplia ou reduz toda a interface: menus, botões, tabelas e espaçamentos.</p>
+                                    </div>
+                                    <div>
+                                        <span class="cfg-label">Tamanho do texto</span>
+                                        <div class="seg" role="radiogroup" aria-label="Tamanho do texto">
+                                            <label><input type="radio" name="cfg-text" value="14" data-cfg="ui.text"><span style="font-size:13px">Aa Pequeno</span></label>
+                                            <label><input type="radio" name="cfg-text" value="16" data-cfg="ui.text"><span style="font-size:15px">Aa Médio</span></label>
+                                            <label><input type="radio" name="cfg-text" value="18" data-cfg="ui.text"><span style="font-size:17px">Aa Grande</span></label>
+                                            <label><input type="radio" name="cfg-text" value="20" data-cfg="ui.text"><span style="font-size:19px">Aa Extra</span></label>
+                                        </div>
+                                        <p class="cfg-hint">Aumenta a fonte, ideal para leitura à distância ou em telas pequenas.</p>
+                                    </div>
+                                    <div>
+                                        <span class="cfg-label">Cor de destaque</span>
+                                        <div class="seg swatches" role="radiogroup" aria-label="Cor de destaque">
+                                            <label title="Laranja AWS"><input type="radio" name="cfg-accent" value="orange" data-cfg="ui.accent"><span style="--sw:#ff9900"></span></label>
+                                            <label title="Azul"><input type="radio" name="cfg-accent" value="blue"   data-cfg="ui.accent"><span style="--sw:#3b82f6"></span></label>
+                                            <label title="Verde"><input type="radio" name="cfg-accent" value="green"  data-cfg="ui.accent"><span style="--sw:#22c55e"></span></label>
+                                            <label title="Roxo"><input type="radio" name="cfg-accent" value="purple" data-cfg="ui.accent"><span style="--sw:#8b5cf6"></span></label>
+                                            <label title="Rosa"><input type="radio" name="cfg-accent" value="pink"   data-cfg="ui.accent"><span style="--sw:#ec4899"></span></label>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="cfg-label" for="cfg-density">Densidade das tabelas</label>
+                                        <select id="cfg-density" class="field" data-cfg="ui.density">
+                                            <option value="compact">Compacta</option>
+                                            <option value="comfortable">Confortável</option>
+                                            <option value="spacious">Espaçosa</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="cfg-grid mt-4">
+                                    <label class="cfg-switch"><span><strong>Alto contraste</strong><small>Bordas e textos mais fortes</small></span>
+                                        <input type="checkbox" class="sw-input" data-cfg="ui.highContrast"><i class="track"></i></label>
+                                    <label class="cfg-switch"><span><strong>Reduzir animações</strong><small>Desativa transições e o carrossel automático</small></span>
+                                        <input type="checkbox" class="sw-input" data-cfg="ui.reduceMotion"><i class="track"></i></label>
+                                    <label class="cfg-switch"><span><strong>Efeitos de fundo</strong><small>Grade de pontos, brilhos e desfoque de vidro</small></span>
+                                        <input type="checkbox" class="sw-input" data-cfg="ui.bgEffects"><i class="track"></i></label>
+                                </div>
+
+                                <h3 class="cfg-sec-title">Evento e Inscrições</h3>
+                                <div class="cfg-grid">
+                                    <div>
+                                        <label class="cfg-label" for="cfg-event-location">Local do evento</label>
+                                        <input type="text" id="cfg-event-location" class="field" maxlength="90" data-cfg="event.location" placeholder="Cidade, país ou link online">
+                                    </div>
+                                    <div>
+                                        <label class="cfg-label" for="cfg-event-mode">Formato</label>
+                                        <select id="cfg-event-mode" class="field" data-cfg="event.mode">
+                                            <option value="Presencial">Presencial</option>
+                                            <option value="Híbrido">Híbrido</option>
+                                            <option value="Online">Online</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="cfg-label" for="cfg-event-start">Data de início</label>
+                                        <input type="date" id="cfg-event-start" class="field" data-cfg="event.start">
+                                    </div>
+                                    <div>
+                                        <label class="cfg-label" for="cfg-event-end">Data de término</label>
+                                        <input type="date" id="cfg-event-end" class="field" data-cfg="event.end">
+                                    </div>
+                                    <div>
+                                        <label class="cfg-label" for="cfg-event-tz">Fuso horário</label>
+                                        <select id="cfg-event-tz" class="field" data-cfg="event.timezone">
+                                            <option value="America/Sao_Paulo">Brasília (GMT-3)</option>
+                                            <option value="America/Manaus">Manaus (GMT-4)</option>
+                                            <option value="America/New_York">Nova York (GMT-5)</option>
+                                            <option value="America/Los_Angeles">Las Vegas / Los Angeles (GMT-8)</option>
+                                            <option value="UTC">UTC</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="cfg-label" for="cfg-event-capacity">Capacidade máxima de inscritos</label>
+                                        <input type="number" id="cfg-event-capacity" class="field" min="1" max="100000" step="1" data-cfg="event.capacity" data-type="number">
+                                    </div>
+                                    <label class="cfg-switch"><span><strong>Inscrições abertas</strong><small>Fechadas, bloqueiam novos inscritos</small></span>
+                                        <input type="checkbox" class="sw-input" data-cfg="event.registrationOpen"><i class="track"></i></label>
+                                    <label class="cfg-switch"><span><strong>Check-in habilitado</strong><small>Permite confirmar presença por CPF</small></span>
+                                        <input type="checkbox" class="sw-input" data-cfg="event.checkinEnabled"><i class="track"></i></label>
+                                </div>
+                            </div>
+
+                            <!-- ===== PERFIL ===== -->
+                            <div class="cfg-pane hidden" data-pane="perfil">
+                                <h3 class="cfg-sec-title">Perfil do Usuário</h3>
+
+                                <div class="cfg-profile-card">
+                                    <div id="cfg-avatar" class="cfg-avatar" aria-hidden="true"></div>
+                                    <div class="min-w-0">
+                                        <p id="cfg-profile-name" class="font-semibold text-lg truncate"></p>
+                                        <p id="cfg-profile-role" class="text-sm text-muted"></p>
+                                        <div class="flex flex-wrap gap-2 mt-3">
+                                            <button type="button" class="btn-outline !w-auto !py-1.5 !text-sm" onclick="$('cfg-avatar-file').click()">
+                                                <i data-lucide="upload" class="w-4 h-4"></i> Enviar foto
+                                            </button>
+                                            <button type="button" class="btn-ghost" onclick="removeAvatar()">Remover foto</button>
+                                        </div>
+                                        <input type="file" id="cfg-avatar-file" accept="image/*" class="hidden" onchange="handleAvatarFile(this)">
+                                    </div>
+                                </div>
+
+                                <div class="cfg-grid mt-4">
+                                    <div>
+                                        <label class="cfg-label" for="cfg-profile-name-in">Nome completo</label>
+                                        <input type="text" id="cfg-profile-name-in" class="field" maxlength="80" data-cfg="profile.name">
+                                    </div>
+                                    <div>
+                                        <label class="cfg-label" for="cfg-profile-role-in">Cargo / Função</label>
+                                        <select id="cfg-profile-role-in" class="field" data-cfg="profile.role">
+                                            <option>Administrador</option>
+                                            <option>Organizador</option>
+                                            <option>Coordenador</option>
+                                            <option>Atendente de Credenciamento</option>
+                                            <option>Palestrante</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="cfg-label" for="cfg-profile-email">E-mail</label>
+                                        <input type="email" id="cfg-profile-email" class="field" maxlength="120" data-cfg="profile.email" placeholder="voce@empresa.com">
+                                    </div>
+                                    <div>
+                                        <label class="cfg-label" for="cfg-profile-phone">Telefone</label>
+                                        <input type="tel" id="cfg-profile-phone" class="field" maxlength="20" data-cfg="profile.phone" placeholder="(00) 00000-0000">
+                                    </div>
+                                    <div>
+                                        <label class="cfg-label" for="cfg-profile-company">Organização</label>
+                                        <input type="text" id="cfg-profile-company" class="field" maxlength="80" data-cfg="profile.company">
+                                    </div>
+                                    <div>
+                                        <label class="cfg-label" for="cfg-profile-sector">Setor / Departamento</label>
+                                        <input type="text" id="cfg-profile-sector" class="field" maxlength="80" data-cfg="profile.sector">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ===== E-MAIL ===== -->
+                            <div class="cfg-pane hidden" data-pane="email">
+                                <h3 class="cfg-sec-title">Configurações de E-mail</h3>
+                                <div class="cfg-grid">
+                                    <div>
+                                        <label class="cfg-label" for="cfg-mail-sender">E-mail de Remetente Padrão</label>
+                                        <input type="email" id="cfg-mail-sender" class="field" maxlength="120" data-cfg="email.sender">
+                                    </div>
+                                    <div>
+                                        <label class="cfg-label" for="cfg-mail-subject">Assunto Padrão (Confirmação)</label>
+                                        <input type="text" id="cfg-mail-subject" class="field" maxlength="120" data-cfg="email.subject">
+                                    </div>
+                                    <div class="span-2">
+                                        <label class="cfg-label" for="cfg-mail-template">Modelo de E-mail de Confirmação</label>
+                                        <textarea id="cfg-mail-template" rows="7" maxlength="2000" class="field resize-y" data-cfg="email.template"></textarea>
+                                        <div class="flex flex-wrap items-center gap-2 mt-2">
+                                            <span class="text-xs text-muted">Inserir variável:</span>
+                                            <button type="button" class="chip-btn" onclick="insertTemplateVar('{nome}')">{nome}</button>
+                                            <button type="button" class="chip-btn" onclick="insertTemplateVar('{evento}')">{evento}</button>
+                                            <button type="button" class="chip-btn" onclick="insertTemplateVar('{data}')">{data}</button>
+                                            <button type="button" class="chip-btn" onclick="insertTemplateVar('{local}')">{local}</button>
+                                            <button type="button" class="chip-btn ml-auto" onclick="toggleMailPreview()"><i data-lucide="eye" class="w-3.5 h-3.5"></i> Pré-visualizar</button>
+                                        </div>
+                                        <div id="cfg-mail-preview" class="cfg-mail-preview hidden" aria-live="polite"></div>
+                                    </div>
+                                    <label class="cfg-switch span-2"><span><strong>Enviar cópia ao organizador</strong><small>Mantém o e-mail do seu perfil em cópia nas confirmações</small></span>
+                                        <input type="checkbox" class="sw-input" data-cfg="email.copyToOrganizer"><i class="track"></i></label>
+                                </div>
+                                <p class="cfg-hint">Este projeto roda só no navegador, então as definições ficam salvas, mas o envio real exige um servidor de e-mail.</p>
+                            </div>
+
+                            <!-- ===== CERTIFICADO ===== -->
+                            <div class="cfg-pane hidden" data-pane="certificado">
+                                <h3 class="cfg-sec-title">Opções de Certificado</h3>
+                                <div class="cfg-grid">
+                                    <div>
+                                        <label class="cfg-label" for="cfg-cert-prefix">ID de Verificação (Prefixo)</label>
+                                        <input type="text" id="cfg-cert-prefix" class="field font-mono" maxlength="20" data-cfg="cert.prefix" placeholder="AWS-2024-">
+                                    </div>
+                                    <div>
+                                        <label class="cfg-label" for="cfg-cert-hours">Carga Horária Padrão</label>
+                                        <input type="number" id="cfg-cert-hours" class="field" min="1" max="99" step="1" data-cfg="cert.hours" data-type="number">
+                                    </div>
+                                    <label class="cfg-switch span-2"><span><strong>Usar a carga horária padrão em todos os certificados</strong><small>Desligado, cada certificado usa as horas do próprio evento</small></span>
+                                        <input type="checkbox" class="sw-input" data-cfg="cert.useDefaultHours"><i class="track"></i></label>
+
+                                    <div>
+                                        <label class="cfg-label" for="cfg-sign1-name">Assinatura 1 (Nome)</label>
+                                        <input type="text" id="cfg-sign1-name" class="field" maxlength="50" data-cfg="cert.sign1Name">
+                                    </div>
+                                    <div>
+                                        <label class="cfg-label" for="cfg-sign1-role">Assinatura 1 (Cargo)</label>
+                                        <input type="text" id="cfg-sign1-role" class="field" maxlength="70" data-cfg="cert.sign1Role">
+                                    </div>
+                                    <div>
+                                        <label class="cfg-label" for="cfg-sign2-name">Assinatura 2 (Nome)</label>
+                                        <input type="text" id="cfg-sign2-name" class="field" maxlength="50" data-cfg="cert.sign2Name">
+                                    </div>
+                                    <div>
+                                        <label class="cfg-label" for="cfg-sign2-role">Assinatura 2 (Cargo)</label>
+                                        <input type="text" id="cfg-sign2-role" class="field" maxlength="70" data-cfg="cert.sign2Role">
+                                    </div>
+                                    <label class="cfg-switch span-2"><span><strong>Habilitar Verificação via QR Code</strong><small>Exibe o QR Code de validação no rodapé do certificado</small></span>
+                                        <input type="checkbox" class="sw-input" data-cfg="cert.qr"><i class="track"></i></label>
+                                </div>
+                            </div>
+
+                            <!-- ===== NOTIFICAÇÕES ===== -->
+                            <div class="cfg-pane hidden" data-pane="notificacoes">
+                                <h3 class="cfg-sec-title">Avisos na Tela</h3>
+                                <div class="cfg-grid">
+                                    <label class="cfg-switch span-2"><span><strong>Exibir avisos (toasts)</strong><small>Erros sempre aparecem, mesmo com esta opção desligada</small></span>
+                                        <input type="checkbox" class="sw-input" data-cfg="notif.toasts"><i class="track"></i></label>
+                                    <div>
+                                        <label class="cfg-label" for="cfg-notif-duration">Duração dos avisos</label>
+                                        <select id="cfg-notif-duration" class="field" data-cfg="notif.duration" data-type="number">
+                                            <option value="3">3 segundos</option>
+                                            <option value="4">4 segundos</option>
+                                            <option value="6">6 segundos</option>
+                                            <option value="10">10 segundos</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="cfg-label" for="cfg-notif-pos">Posição na tela</label>
+                                        <select id="cfg-notif-pos" class="field" data-cfg="notif.position">
+                                            <option value="right">Canto inferior direito</option>
+                                            <option value="left">Canto inferior esquerdo</option>
+                                        </select>
+                                    </div>
+                                    <label class="cfg-switch span-2"><span><strong>Som de notificação</strong><small>Toca um breve sinal quando um aviso aparece</small></span>
+                                        <input type="checkbox" class="sw-input" data-cfg="notif.sound"><i class="track"></i></label>
+                                </div>
+
+                                <h3 class="cfg-sec-title">Avisar quando</h3>
+                                <div class="cfg-grid">
+                                    <label class="cfg-switch"><span><strong>Novo inscrito</strong><small>Ao adicionar alguém à lista</small></span>
+                                        <input type="checkbox" class="sw-input" data-cfg="notif.newAttendee"><i class="track"></i></label>
+                                    <label class="cfg-switch"><span><strong>Check-in realizado</strong><small>Ao confirmar a presença de alguém</small></span>
+                                        <input type="checkbox" class="sw-input" data-cfg="notif.checkin"><i class="track"></i></label>
+                                    <label class="cfg-switch"><span><strong>Novo feedback</strong><small>Ao receber um relatório do evento</small></span>
+                                        <input type="checkbox" class="sw-input" data-cfg="notif.feedback"><i class="track"></i></label>
+                                </div>
+                                <div class="mt-4">
+                                    <button type="button" class="btn-outline !w-auto" onclick="testNotification()"><i data-lucide="bell-ring" class="w-4 h-4"></i> Testar aviso</button>
+                                </div>
+                            </div>
+
+                            <!-- ===== SEGURANÇA ===== -->
+                            <div class="cfg-pane hidden" data-pane="seguranca">
+                                <h3 class="cfg-sec-title">Privacidade e Segurança</h3>
+                                <div class="cfg-grid">
+                                    <label class="cfg-switch"><span><strong>Ocultar CPF nas tabelas</strong><small>Mostra apenas parte do número (***.456.789-**)</small></span>
+                                        <input type="checkbox" class="sw-input" data-cfg="security.maskCpf"><i class="track"></i></label>
+                                    <label class="cfg-switch"><span><strong>Ocultar e-mails nas tabelas</strong><small>Mostra a inicial e o domínio (a***@empresa.com)</small></span>
+                                        <input type="checkbox" class="sw-input" data-cfg="security.maskEmail"><i class="track"></i></label>
+                                    <label class="cfg-switch span-2"><span><strong>Confirmar antes de excluir inscritos</strong><small>Evita remoções acidentais</small></span>
+                                        <input type="checkbox" class="sw-input" data-cfg="security.confirmDelete"><i class="track"></i></label>
+                                </div>
+
+                                <h3 class="cfg-sec-title">Dados e Backup</h3>
+                                <div class="flex flex-wrap gap-2">
+                                    <button type="button" class="btn-outline !w-auto" onclick="exportAttendeesCSV()"><i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Exportar inscritos (CSV)</button>
+                                    <button type="button" class="btn-outline !w-auto" onclick="exportSettings()"><i data-lucide="download" class="w-4 h-4"></i> Exportar configurações</button>
+                                    <button type="button" class="btn-outline !w-auto" onclick="$('cfg-import-file').click()"><i data-lucide="upload" class="w-4 h-4"></i> Importar configurações</button>
+                                    <input type="file" id="cfg-import-file" accept="application/json,.json" class="hidden" onchange="importSettings(this)">
+                                </div>
+
+                                <h3 class="cfg-sec-title">Zona de Risco</h3>
+                                <div class="flex flex-wrap gap-2">
+                                    <button type="button" class="btn-outline !w-auto" onclick="resetSettings()"><i data-lucide="rotate-ccw" class="w-4 h-4"></i> Restaurar configurações padrão</button>
+                                    <button type="button" class="btn-outline !w-auto cfg-danger" onclick="clearAllData()"><i data-lucide="trash-2" class="w-4 h-4"></i> Apagar todos os dados locais</button>
+                                </div>
+                                <p class="cfg-hint">Os dados ficam apenas neste navegador. Apagar remove inscritos, feedbacks e configurações.</p>
+                            </div>
+
+                            <!-- Rodapé do painel -->
+                            <div class="cfg-footer">
+                                <span id="cfg-dirty" class="cfg-dirty hidden"><i data-lucide="circle-dot" class="w-4 h-4"></i> Alterações não salvas</span>
+                                <button type="submit" class="btn-add !normal-case">Salvar Alterações</button>
+                                <button type="button" class="btn-grey" onclick="discardSettings()">Descartar</button>
+                            </div>
+                        </form>
                     </div>
                 </section>
 
