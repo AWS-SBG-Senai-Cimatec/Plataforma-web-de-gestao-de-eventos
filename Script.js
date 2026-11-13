@@ -1,6 +1,6 @@
 /* =========================================================
                   Projeto Gestão de Eventos
-   Abas: Inscritos | Check-in | Certificados | Relatórios
+   Abas: Home | Inscritos | Check-in | Certificados | Relatórios | Configurações
    ========================================================= */
 
 // ---------- Dados ----------
@@ -49,8 +49,69 @@ const TAB_META = {
     certificados:  { title: 'AWS re:Invent | Emissão de Certificados',   nav: 'relatorios',    rail: null },
     eventos:       { title: 'AWS Events Manager | Eventos',              nav: 'eventos',       rail: null,            placeholder: 'Eventos' },
     relatorios:    { title: 'AWS Events Manager | Relatórios',           nav: 'relatorios',    rail: 'relatorios' },
-    configuracoes: { title: 'AWS Events Manager | Configurações',        nav: 'configuracoes', rail: null, placeholder: 'Configurações' }
+    configuracoes: { title: 'AWS Events Manager | Configurações',        nav: 'configuracoes', rail: null }
 };
+
+// ---------- Configurações (valores padrão e persistência) ----------
+const SETTINGS_KEY = 'aws-events-settings-v1';
+
+const DEFAULT_SETTINGS = {
+    profile: { name: 'Raphael Lima', role: 'Administrador', email: '', phone: '', company: 'AWS', sector: 'Eventos', avatar: '' },
+    ui: { theme: 'dark', language: 'pt-BR', hud: '100', text: '16', accent: 'orange', density: 'comfortable', highContrast: false, reduceMotion: false, bgEffects: true },
+    event: { name: 'AWS re:Invent 2024 - Tech Immersion', location: 'Las Vegas, NV', mode: 'Presencial', start: '2024-12-02', end: '2024-12-06', timezone: 'America/Sao_Paulo', capacity: 500, registrationOpen: true, checkinEnabled: true },
+    email: {
+        sender: 'suporte.eventos@aws.com',
+        subject: 'Confirmação de Inscrição',
+        template: 'Olá, {nome}!\n\nSua inscrição no evento {evento} foi confirmada.\n\nData: {data}\nLocal: {local}\n\nNo dia, informe o seu CPF no credenciamento para fazer o check-in.\n\nAté lá!\nEquipe de Eventos',
+        copyToOrganizer: false
+    },
+    cert: { prefix: 'AWS-2024-', hours: 8, useDefaultHours: false, sign1Name: 'Ricardo Almeida', sign1Role: 'Diretor de Eventos, AWS Americas', sign2Name: 'Paulo Henrique', sign2Role: 'Coordenador Técnico', qr: true },
+    notif: { toasts: true, duration: 4, position: 'right', sound: false, newAttendee: true, checkin: true, feedback: true },
+    security: { maskCpf: false, maskEmail: false, confirmDelete: true }
+};
+
+// main = cor no tema escuro e botões; soft = texto de destaque no escuro; light = texto de destaque no claro; on = texto sobre a cor
+const ACCENTS = {
+    orange: { main: '#ff9900', soft: '#fb923c', light: '#c2410c', on: '#111827' },
+    blue:   { main: '#3b82f6', soft: '#60a5fa', light: '#1d4ed8', on: '#ffffff' },
+    green:  { main: '#22c55e', soft: '#4ade80', light: '#15803d', on: '#052e16' },
+    purple: { main: '#8b5cf6', soft: '#a78bfa', light: '#6d28d9', on: '#ffffff' },
+    pink:   { main: '#ec4899', soft: '#f472b6', light: '#be185d', on: '#ffffff' }
+};
+
+const clone = (obj) => JSON.parse(JSON.stringify(obj));
+
+// Mescla o que veio salvo com os padrões, aceitando só chaves conhecidas e do mesmo tipo
+function deepMerge(base, extra) {
+    const out = {};
+    for (const key of Object.keys(base)) {
+        const b = base[key];
+        const e = extra && typeof extra === 'object' ? extra[key] : undefined;
+        if (b && typeof b === 'object' && !Array.isArray(b)) out[key] = deepMerge(b, e);
+        else out[key] = typeof e === typeof b ? e : b;
+    }
+    return out;
+}
+
+function loadSettings() {
+    try {
+        const raw = localStorage.getItem(SETTINGS_KEY);
+        if (raw) return deepMerge(DEFAULT_SETTINGS, JSON.parse(raw));
+    } catch (e) { /* ignora: usa o padrão */ }
+    return clone(DEFAULT_SETTINGS);
+}
+
+function persistSettings() {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { /* ignora */ }
+}
+
+function resolveTheme(theme) {
+    if (theme === 'auto') return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    return theme === 'light' ? 'light' : 'dark';
+}
+
+let settings = loadSettings();
+let draft = clone(settings);
 
 let attendees = loadAttendees();
 let editingId = null;
@@ -98,14 +159,17 @@ function refreshIcons() {
     if (window.lucide) lucide.createIcons();
 }
 
-function toast(message, type = 'info') {
+function toast(message, type = 'info', force = false) {
+    // Erros sempre aparecem; os demais respeitam a opção "Exibir avisos"
+    if (!force && type !== 'error' && !settings.notif.toasts) return;
     const el = document.createElement('div');
     el.className = `toast ${type}`;
     const icon = type === 'ok' ? 'circle-check' : type === 'error' ? 'circle-alert' : 'info';
     el.innerHTML = `<i data-lucide="${icon}" class="w-4 h-4 shrink-0"></i><span>${esc(message)}</span>`;
     $('toast-area').appendChild(el);
     refreshIcons();
-    setTimeout(() => el.remove(), 3800);
+    if (settings.notif.sound) playBeep(type);
+    setTimeout(() => el.remove(), settings.notif.duration * 1000);
 }
 
 // ---------- Persistência (localStorage, com fallback em memória) ----------
@@ -139,6 +203,12 @@ function switchTab(tabId) {
     const meta = TAB_META[tabId];
     if (!meta) return;
 
+    // Saindo da aba Configurações com alterações pendentes: descarta a pré-visualização
+    if (document.body.dataset.tab === 'configuracoes' && tabId !== 'configuracoes' && isDirty()) {
+        discardSettings(true);
+        toast('Alterações não salvas foram descartadas.', 'info', true);
+    }
+
     editingId = null;
     toggleAddPopover(false);
     toggleReportsPanel(false);
@@ -152,7 +222,7 @@ function switchTab(tabId) {
     document.body.dataset.tab = tabId;
 
     $('page-title').textContent = meta.title;
-    document.title = `${meta.title} - re:Invent 2024`;
+    document.title = `${meta.title} - ${settings.event.name}`;
 
     document.querySelectorAll('.top-link').forEach((b) => b.classList.toggle('active', b.dataset.nav === meta.nav));
     document.querySelectorAll('.rail-btn').forEach((b) => b.classList.toggle('active', b.dataset.rail === meta.rail));
@@ -160,6 +230,7 @@ function switchTab(tabId) {
 
     if (meta.placeholder) $('placeholder-name').textContent = meta.placeholder;
     if (tabId === 'inscritos') renderTable();
+    if (tabId === 'configuracoes') openConfigTab();
     if (tabId === 'certificados') populateCertificatesDropdown();
     if (tabId === 'home') startHero(); else stopHero();
     if (tabId === 'checkin') setTimeout(() => $('checkin-cpf').focus(), 0);
@@ -187,6 +258,18 @@ function actionButtons(a, editing) {
         </button>`;
 }
 
+function displayCpf(cpf) {
+    if (!settings.security.maskCpf) return cpf;
+    const d = onlyDigits(cpf);
+    return d.length === 11 ? `***.${d.slice(3, 6)}.${d.slice(6, 9)}-**` : '***';
+}
+
+function displayEmail(email) {
+    if (!settings.security.maskEmail) return email;
+    const [local, domain] = String(email).split('@');
+    return domain ? `${local[0] || ''}***@${domain}` : '***';
+}
+
 function rowView(a) {
     const confirmed = a.status === 'Confirmado';
     return `
@@ -194,9 +277,9 @@ function rowView(a) {
             <td class="font-mono text-slate-300">${a.id}</td>
             <td>
                 <div class="font-medium text-slate-50">${esc(a.name)}</div>
-                <div class="text-[11px] font-mono text-slate-500">${esc(a.cpf)}</div>
+                <div class="text-[11px] font-mono text-slate-500">${esc(displayCpf(a.cpf))}</div>
             </td>
-            <td class="text-slate-300">${esc(a.email)}</td>
+            <td class="text-slate-300">${esc(displayEmail(a.email))}</td>
             <td class="text-slate-200">
                 ${esc(a.company)}
                 ${a.sector ? `<div class="text-[11px] text-slate-500">${esc(a.sector)}</div>` : ''}
@@ -282,6 +365,8 @@ function toggleAddPopover(force) {
 
 function handleAddAttendee(event) {
     event.preventDefault();
+    if (!settings.event.registrationOpen) { toast('As inscrições estão encerradas. Reabra em Configurações > Sistema.', 'error'); return; }
+    if (attendees.length >= settings.event.capacity) { toast(`Capacidade máxima de ${settings.event.capacity} inscritos atingida.`, 'error'); return; }
     const data = {
         name: $('add-name').value,
         cpf: $('add-cpf').value,
@@ -309,7 +394,7 @@ function handleAddAttendee(event) {
     $('search-input').value = '';
     renderTable();
     populateCertificatesDropdown();
-    toast(`${data.name.trim()} foi adicionado(a) à lista.`, 'ok');
+    if (settings.notif.newAttendee) toast(`${data.name.trim()} foi adicionado(a) à lista.`, 'ok');
 }
 
 // --- Editar (na própria linha) ---
@@ -356,7 +441,8 @@ function saveEdit(id) {
 
 function deleteAttendee(id) {
     const a = attendees.find((x) => x.id === id);
-    if (!a || !confirm(`Remover ${a.name} da lista de inscritos?`)) return;
+    if (!a) return;
+    if (settings.security.confirmDelete && !confirm(`Remover ${a.name} da lista de inscritos?`)) return;
     attendees = attendees.filter((x) => x.id !== id);
     saveAttendees();
     editingId = null;
@@ -399,6 +485,11 @@ function handleCheckIn(event) {
     const input = $('checkin-cpf');
     const digits = onlyDigits(input.value);
 
+    if (!settings.event.checkinEnabled) {
+        showCheckinAlert('error', `<i data-lucide="circle-alert" class="w-5 h-5 shrink-0"></i><span>O check-in está desabilitado. Ative em Configurações > Sistema.</span>`);
+        return;
+    }
+
     if (digits.length !== 11) {
         showCheckinAlert('error', `<i data-lucide="circle-alert" class="w-5 h-5 shrink-0"></i><span>Informe um CPF com 11 dígitos.</span>`);
         input.focus();
@@ -417,6 +508,7 @@ function handleCheckIn(event) {
         showCheckinAlert('success', `<i data-lucide="circle-check" class="w-5 h-5 shrink-0"></i><span>Presença confirmada com sucesso para <strong>${esc(attendee.name)}</strong>!</span>`);
         renderTable();
         populateCertificatesDropdown();
+        if (settings.notif.checkin) toast(`Check-in registrado: ${attendee.name}.`, 'ok');
     }
 
     input.value = '';
@@ -477,7 +569,7 @@ function populateCertificatesDropdown(preferId) {
 
 function buildCertificateId(attendee, isoDate) {
     const datePart = (isoDate || new Date().toISOString().slice(0, 10)).replace(/-/g, '');
-    return `${datePart}${String(attendee.id).padStart(6, '0')}`;
+    return `${settings.cert.prefix}${datePart}${String(attendee.id).padStart(6, '0')}`;
 }
 
 function renderQR(text) {
@@ -512,7 +604,7 @@ function updateCertificatePreview() {
     $('preview-event-name').textContent = ev.name;
     $('preview-date').textContent = dateBR || '--/--/----';
     $('preview-topics').textContent = topics || 'os temas do evento';
-    $('preview-hours').textContent = ev.hours;
+    $('preview-hours').textContent = settings.cert.useDefaultHours ? settings.cert.hours : ev.hours;
 
     if (attendee) {
         const certId = buildCertificateId(attendee, isoDate);
@@ -609,7 +701,7 @@ function handleFeedbackSubmit(event) {
     $('feedback-form').reset();
     updateFeedbackCounter();
     renderFeedbackList();
-    toast('Feedback enviado. O administrador poderá lê-lo após o evento.', 'ok');
+    if (settings.notif.feedback) toast('Feedback enviado. O administrador poderá lê-lo após o evento.', 'ok');
 }
 
 function renderFeedbackList() {
@@ -621,7 +713,7 @@ function renderFeedbackList() {
     $('reports-list').innerHTML = list.length === 0
         ? `<div class="fb-empty"><i data-lucide="inbox"></i>Nenhum feedback enviado ainda.</div>`
         : list.map((f) => {
-            const when = new Date(f.createdAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+            const when = new Date(f.createdAt).toLocaleString(settings.ui.language, { dateStyle: 'short', timeStyle: 'short' });
             return `
             <article class="fb-item">
                 <div class="fb-event">${esc(f.eventName)}</div>
@@ -683,14 +775,411 @@ function goToSlide(i) { showSlide(i); startHero(); }
 
 function startHero() {
     stopHero();
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || settings.ui.reduceMotion) return;
     heroTimer = setInterval(() => showSlide(heroIndex + 1), 5500);
 }
 
 function stopHero() { clearInterval(heroTimer); heroTimer = null; }
 
+// =========================================================
+// ABA CONFIGURAÇÕES
+// Rascunho (draft) é editado no formulário; "Salvar" confirma.
+// Opções visuais (tema, tamanhos, cor) são pré-visualizadas ao vivo.
+// =========================================================
+const PANE_SECTIONS = {
+    sistema: ['ui', 'event'], perfil: ['profile'], email: ['email'],
+    certificado: ['cert'], notificacoes: ['notif'], seguranca: ['security']
+};
+
+function applyUI(ui) {
+    const root = document.documentElement;
+    const theme = resolveTheme(ui.theme);
+    const acc = ACCENTS[ui.accent] || ACCENTS.orange;
+
+    root.dataset.theme = theme;
+    root.dataset.contrast = ui.highContrast ? 'high' : 'normal';
+    root.dataset.motion = ui.reduceMotion ? 'reduce' : 'normal';
+    root.dataset.fx = ui.bgEffects ? 'on' : 'off';
+    root.dataset.density = ui.density;
+    root.lang = ui.language;
+    root.style.fontSize = `${ui.text}px`;
+    root.style.setProperty('--hud-zoom', String(Number(ui.hud) / 100));
+    root.style.setProperty('--aws-orange', acc.main);
+    root.style.setProperty('--aws-orange-soft', theme === 'light' ? acc.light : acc.soft);
+    root.style.setProperty('--on-accent', acc.on);
+
+    if (ui.reduceMotion) stopHero();
+    else if (document.body.dataset.tab === 'home') startHero();
+}
+
+function currentUI() {
+    return (document.body.dataset.tab === 'configuracoes' ? draft : settings).ui;
+}
+
+function shortName(full) {
+    const parts = String(full).trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return 'Usuário';
+    if (parts.length === 1) return parts[0];
+    return `${parts[0]} ${parts[parts.length - 1][0].toUpperCase()}.`;
+}
+
+function initials(full) {
+    const parts = String(full).trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return '?';
+    return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+}
+
+function fillAvatar(el, profile) {
+    if (profile.avatar) {
+        el.innerHTML = `<img src="${esc(profile.avatar)}" alt="" class="w-full h-full object-cover">`;
+    } else {
+        el.textContent = initials(profile.name);
+    }
+}
+
+function applyProfile(p) {
+    fillAvatar($('user-avatar'), p);
+    $('user-name').textContent = shortName(p.name);
+    $('user-role').textContent = p.role;
+}
+
+function applyCertificateSettings() {
+    const c = settings.cert;
+    $('sig1-name').textContent = c.sign1Name;
+    $('sig1-role').textContent = c.sign1Role;
+    $('sig2-name').textContent = c.sign2Name;
+    $('sig2-role').textContent = c.sign2Role;
+    $('certificate-print-area').classList.toggle('no-qr', !c.qr);
+}
+
+function applyToastPosition() {
+    $('toast-area').dataset.pos = settings.notif.position;
+}
+
+function applyAll() {
+    applyUI(settings.ui);
+    applyProfile(settings.profile);
+    applyCertificateSettings();
+    applyToastPosition();
+}
+
+// ---------- Formulário <-> rascunho ----------
+const getPath = (obj, path) => path.split('.').reduce((o, k) => (o ? o[k] : undefined), obj);
+function setPath(obj, path, value) {
+    const keys = path.split('.');
+    const last = keys.pop();
+    keys.reduce((o, k) => o[k], obj)[last] = value;
+}
+
+function loadForm() {
+    document.querySelectorAll('#cfg-panel [data-cfg]').forEach((el) => {
+        const v = getPath(draft, el.dataset.cfg);
+        if (el.type === 'checkbox') el.checked = !!v;
+        else if (el.type === 'radio') el.checked = String(v) === el.value;
+        else el.value = v ?? '';
+    });
+    refreshProfileCard();
+    refreshDirty();
+    if (!$('cfg-mail-preview').classList.contains('hidden')) renderMailPreview();
+}
+
+function onCfgInput(e) {
+    const el = e.target.closest('[data-cfg]');
+    if (!el) return;
+    if (el.type === 'radio' && !el.checked) return;
+
+    let value;
+    if (el.type === 'checkbox') value = el.checked;
+    else if (el.dataset.type === 'number') value = el.value === '' ? '' : Number(el.value);
+    else value = el.value;
+    setPath(draft, el.dataset.cfg, value);
+
+    if (el.dataset.cfg.startsWith('ui.')) applyUI(draft.ui);
+    if (el.dataset.cfg.startsWith('profile.')) refreshProfileCard();
+    if (!$('cfg-mail-preview').classList.contains('hidden')) renderMailPreview();
+    refreshDirty();
+}
+
+function isDirty() {
+    return JSON.stringify(draft) !== JSON.stringify(settings);
+}
+
+function refreshDirty() {
+    $('cfg-dirty').classList.toggle('hidden', !isDirty());
+    document.querySelectorAll('.cfg-tab').forEach((tab) => {
+        const changed = PANE_SECTIONS[tab.dataset.cfgTab].some(
+            (s) => JSON.stringify(draft[s]) !== JSON.stringify(settings[s])
+        );
+        tab.classList.toggle('changed', changed);
+    });
+}
+
+function showCfgPane(name) {
+    document.querySelectorAll('.cfg-pane').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== name));
+    document.querySelectorAll('.cfg-tab').forEach((t) => {
+        const on = t.dataset.cfgTab === name;
+        t.classList.toggle('active', on);
+        t.setAttribute('aria-selected', String(on));
+    });
+}
+
+function openSettings(pane) {
+    switchTab('configuracoes');
+    if (pane) showCfgPane(pane);
+}
+
+// Chamado pelo switchTab ao entrar na aba
+function openConfigTab() {
+    draft = clone(settings);
+    loadForm();
+    refreshIcons();
+}
+
+// ---------- Perfil ----------
+function refreshProfileCard() {
+    fillAvatar($('cfg-avatar'), draft.profile);
+    $('cfg-profile-name').textContent = draft.profile.name || 'Seu nome';
+    $('cfg-profile-role').textContent = [draft.profile.role, draft.profile.company].filter(Boolean).join(' • ');
+}
+
+function handleAvatarFile(input) {
+    const file = input.files && input.files[0];
+    input.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { toast('Escolha um arquivo de imagem.', 'error'); return; }
+    if (file.size > 8 * 1024 * 1024) { toast('A imagem deve ter até 8 MB.', 'error'); return; }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+            // Recorta o centro em quadrado e reduz, para caber no armazenamento local
+            const size = 160;
+            const canvas = document.createElement('canvas');
+            canvas.width = canvas.height = size;
+            const side = Math.min(img.width, img.height);
+            canvas.getContext('2d').drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, size, size);
+            draft.profile.avatar = canvas.toDataURL('image/jpeg', 0.85);
+            refreshProfileCard();
+            refreshDirty();
+        };
+        img.onerror = () => toast('Não foi possível ler a imagem.', 'error');
+        img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function removeAvatar() {
+    draft.profile.avatar = '';
+    refreshProfileCard();
+    refreshDirty();
+}
+
+// ---------- E-mail: modelo e pré-visualização ----------
+function renderTemplate(tpl, vars) {
+    return String(tpl).replace(/\{(nome|evento|data|local)\}/g, (_, k) => vars[k]);
+}
+
+function renderMailPreview() {
+    const box = $('cfg-mail-preview');
+    const vars = {
+        nome: 'Ana Paula Silva',
+        evento: draft.event.name,
+        data: formatDateBR(draft.event.start) || '--/--/----',
+        local: draft.event.location || 'a definir'
+    };
+    box.innerHTML = `
+        <div class="text-xs text-muted mb-2">
+            <div><strong>De:</strong> ${esc(draft.email.sender)}</div>
+            <div><strong>Para:</strong> anapsilva@email.com</div>
+            <div><strong>Assunto:</strong> ${esc(renderTemplate(draft.email.subject, vars))}</div>
+        </div>
+        <div>${esc(renderTemplate(draft.email.template, vars))}</div>`;
+}
+
+function toggleMailPreview() {
+    const box = $('cfg-mail-preview');
+    box.classList.toggle('hidden');
+    if (!box.classList.contains('hidden')) renderMailPreview();
+}
+
+function insertTemplateVar(token) {
+    const ta = $('cfg-mail-template');
+    const start = ta.selectionStart ?? ta.value.length;
+    const end = ta.selectionEnd ?? ta.value.length;
+    ta.setRangeText(token, start, end, 'end');
+    ta.focus();
+    draft.email.template = ta.value;
+    if (!$('cfg-mail-preview').classList.contains('hidden')) renderMailPreview();
+    refreshDirty();
+}
+
+// ---------- Notificações ----------
+function testNotification() {
+    // Usa o rascunho atual para o usuário ouvir/ver como ficará
+    const backup = settings.notif;
+    settings.notif = draft.notif;
+    applyToastPosition();
+    toast('Assim os avisos vão aparecer.', 'ok', true);
+    settings.notif = backup;
+}
+
+let audioCtx = null;
+function playBeep(type) {
+    try {
+        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = type === 'error' ? 220 : type === 'ok' ? 880 : 660;
+        gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.18);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.2);
+    } catch (e) { /* sem áudio disponível */ }
+}
+
+// ---------- Salvar / descartar / restaurar ----------
+function trimSettings(s) {
+    ['profile', 'event', 'email', 'cert'].forEach((sec) => {
+        Object.keys(s[sec]).forEach((k) => {
+            if (typeof s[sec][k] === 'string' && k !== 'avatar') {
+                s[sec][k] = k === 'template' ? s[sec][k].trimEnd() : s[sec][k].trim();
+            }
+        });
+    });
+    return s;
+}
+
+function validateSettings(s) {
+    const mailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const fail = (pane, field, message) => ({ pane, field, message });
+
+    if (!s.profile.name.trim()) return fail('perfil', 'profile.name', 'Informe o seu nome.');
+    if (s.profile.email.trim() && !mailRx.test(s.profile.email.trim())) return fail('perfil', 'profile.email', 'O e-mail do perfil é inválido.');
+    if (!s.event.name.trim()) return fail('sistema', 'event.name', 'Informe o nome do evento principal.');
+    if (s.event.start && s.event.end && s.event.end < s.event.start) return fail('sistema', 'event.end', 'A data de término deve ser igual ou posterior à de início.');
+    if (!Number.isInteger(s.event.capacity) || s.event.capacity < 1 || s.event.capacity > 100000) return fail('sistema', 'event.capacity', 'A capacidade deve ser um número inteiro entre 1 e 100.000.');
+    if (!mailRx.test(s.email.sender.trim())) return fail('email', 'email.sender', 'Informe um e-mail de remetente válido.');
+    if (!s.email.subject.trim()) return fail('email', 'email.subject', 'Informe o assunto padrão.');
+    if (!s.email.template.trim()) return fail('email', 'email.template', 'O modelo de e-mail não pode ficar vazio.');
+    if (!/^[A-Za-z0-9_-]{0,20}$/.test(s.cert.prefix.trim())) return fail('certificado', 'cert.prefix', 'Use no prefixo só letras, números, hífen e sublinhado (até 20 caracteres).');
+    if (!Number.isInteger(s.cert.hours) || s.cert.hours < 1 || s.cert.hours > 99) return fail('certificado', 'cert.hours', 'A carga horária deve ser um número inteiro entre 1 e 99.');
+    return null;
+}
+
+function saveSettings(event) {
+    event.preventDefault();
+    const candidate = trimSettings(clone(draft));
+    const problem = validateSettings(candidate);
+    if (problem) {
+        showCfgPane(problem.pane);
+        const el = document.querySelector(`[data-cfg="${problem.field}"]`);
+        if (el) el.focus();
+        toast(problem.message, 'error');
+        return;
+    }
+
+    settings = candidate;
+    draft = clone(settings);
+    persistSettings();
+    applyAll();
+    loadForm();
+
+    // Atualiza as telas que dependem das opções
+    $('page-title').textContent = TAB_META.configuracoes.title;
+    document.title = `${TAB_META.configuracoes.title} - ${settings.event.name}`;
+    renderTable();
+    updateCertificatePreview();
+    toast('Configurações salvas com sucesso.', 'ok', true);
+}
+
+function discardSettings(silent = false) {
+    draft = clone(settings);
+    applyUI(settings.ui);
+    loadForm();
+    if (!silent) toast('Alterações descartadas.', 'info', true);
+}
+
+function resetSettings() {
+    if (!confirm('Restaurar todas as configurações para o padrão? Você ainda precisará clicar em Salvar Alterações.')) return;
+    draft = clone(DEFAULT_SETTINGS);
+    applyUI(draft.ui);
+    loadForm();
+    toast('Padrões carregados. Clique em Salvar Alterações para confirmar.', 'info', true);
+}
+
+function clearAllData() {
+    if (!confirm('Apagar inscritos, feedbacks e configurações deste navegador? Esta ação não pode ser desfeita.')) return;
+    try {
+        [STORAGE_KEY, FEEDBACK_KEY, SETTINGS_KEY].forEach((k) => localStorage.removeItem(k));
+    } catch (e) { /* ignora */ }
+    location.reload();
+}
+
+// ---------- Exportar / importar ----------
+function downloadFile(name, content, type) {
+    const url = URL.createObjectURL(new Blob([content], { type }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function exportAttendeesCSV() {
+    const cell = (v) => {
+        let t = String(v ?? '');
+        if (/^[=+\-@]/.test(t)) t = `'${t}`; // evita execução de fórmulas no Excel
+        return `"${t.replace(/"/g, '""')}"`;
+    };
+    const rows = [['ID', 'Nome', 'CPF', 'E-mail', 'Empresa', 'Setor', 'Status']]
+        .concat(attendees.map((a) => [a.id, a.name, a.cpf, a.email, a.company, a.sector || '', a.status]));
+    const csv = '\uFEFF' + rows.map((r) => r.map(cell).join(';')).join('\r\n');
+    downloadFile('inscritos.csv', csv, 'text/csv;charset=utf-8');
+    toast(`${attendees.length} inscritos exportados.`, 'ok');
+}
+
+function exportSettings() {
+    downloadFile('configuracoes-eventos.json', JSON.stringify(settings, null, 2), 'application/json');
+    toast('Configurações exportadas.', 'ok');
+}
+
+function importSettings(input) {
+    const file = input.files && input.files[0];
+    input.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+        try {
+            const merged = deepMerge(DEFAULT_SETTINGS, JSON.parse(reader.result));
+            draft = merged;
+            applyUI(draft.ui);
+            loadForm();
+            toast('Configurações importadas. Revise e clique em Salvar Alterações.', 'info', true);
+        } catch (e) {
+            toast('Arquivo inválido. Use um JSON exportado por esta tela.', 'error');
+        }
+    };
+    reader.readAsText(file);
+}
+
+function initSettings() {
+    applyAll();
+    const panel = $('cfg-panel');
+    panel.addEventListener('input', onCfgInput);
+    panel.addEventListener('change', onCfgInput);
+    // No tema "automático", acompanha o sistema operacional
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyUI(currentUI()));
+}
+
 // ---------- Inicialização ----------
 document.addEventListener('DOMContentLoaded', () => {
+    initSettings();
     initCertificateForm();
     populateCertificatesDropdown();
     initHome();
