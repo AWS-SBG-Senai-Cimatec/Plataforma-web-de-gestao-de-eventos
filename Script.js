@@ -46,7 +46,7 @@ const TAB_META = {
     home:          { title: 'AWS Events Manager | Home',                 nav: 'home',          rail: null },
     inscritos:     { title: 'AWS Events Manager | Gestão de Inscritos',  nav: 'inscritos',     rail: null },
     checkin:       { title: 'AWS Events Manager | Check-in Presencial',  nav: 'checkin',       rail: null },
-    certificados:  { title: 'AWS re:Invent | Emissão de Certificados',   nav: 'relatorios',    rail: null },
+    certificados:  { title: 'AWS Events Manager | Emissão de Certificados',   nav: 'relatorios',    rail: 'certificados' },
     eventos:       { title: 'AWS Events Manager | Eventos',              nav: 'eventos',       rail: null,            placeholder: 'Eventos' },
     relatorios:    { title: 'AWS Events Manager | Relatórios',           nav: 'relatorios',    rail: 'relatorios' },
     configuracoes: { title: 'AWS Events Manager | Configurações',        nav: 'configuracoes', rail: null }
@@ -56,7 +56,7 @@ const TAB_META = {
 const SETTINGS_KEY = 'aws-events-settings-v1';
 
 const DEFAULT_SETTINGS = {
-    profile: { name: 'Raphael Lima', role: 'Administrador', email: '', phone: '', company: 'AWS', sector: 'Eventos', avatar: '' },
+    profile: { name: 'Raphael Leão', role: 'Administrador', email: '', phone: '', company: 'AWS', sector: 'Eventos', avatar: '' },
     ui: { theme: 'dark', language: 'pt-BR', hud: '100', text: '16', accent: 'orange', density: 'comfortable', highContrast: false, reduceMotion: false, bgEffects: true },
     event: { name: 'AWS re:Invent 2024 - Tech Immersion', location: 'Las Vegas, NV', mode: 'Presencial', start: '2024-12-02', end: '2024-12-06', timezone: 'America/Sao_Paulo', capacity: 500, registrationOpen: true, checkinEnabled: true },
     email: {
@@ -905,7 +905,10 @@ function isDirty() {
 }
 
 function refreshDirty() {
-    $('cfg-dirty').classList.toggle('hidden', !isDirty());
+    const dirty = isDirty();
+    $('cfg-dirty').classList.toggle('hidden', !dirty);
+    // Rodapé (Salvar / Descartar) só aparece enquanto houver alterações pendentes
+    $('cfg-footer').classList.toggle('is-clean', !dirty);
     document.querySelectorAll('.cfg-tab').forEach((tab) => {
         const changed = PANE_SECTIONS[tab.dataset.cfgTab].some(
             (s) => JSON.stringify(draft[s]) !== JSON.stringify(settings[s])
