@@ -623,7 +623,7 @@ html[data-theme="light"] .fb-close:hover { color: #000; background: #e2e8f0; }
    ========================================================= */
 .cfg-layout { display: flex; flex-direction: column; gap: 1rem; }
 @media (min-width: 900px) {
-    .cfg-layout { flex-direction: row; align-items: flex-start; gap: 0; }
+    .cfg-layout { flex-direction: row; align-items: flex-start; justify-content: center; gap: 0; }
 }
 
 /* Abas verticais (a ativa "gruda" no painel, como no modelo) */
@@ -661,7 +661,7 @@ html[data-theme="light"] .fb-close:hover { color: #000; background: #e2e8f0; }
     flex: 1; min-width: 0; width: 100%; max-width: 940px;
     background: var(--panel); border: 1px solid var(--line); border-radius: 1rem;
     box-shadow: 0 20px 50px -20px rgba(0, 0, 0, .55);
-    padding: 1.4rem 1.6rem 0; color: var(--text);
+    padding: 1.4rem 1.6rem 1.6rem; color: var(--text);
 }
 .cfg-title { font-size: 1.3rem; font-weight: 600; padding-bottom: .9rem; border-bottom: 1px solid var(--line); margin-bottom: .4rem; }
 
@@ -738,9 +738,10 @@ html[data-theme="light"] .fb-close:hover { color: #000; background: #e2e8f0; }
 .cfg-footer {
     position: sticky; bottom: 0; z-index: 5;
     display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .8rem;
-    margin: 1.6rem -1.6rem 0; padding: 1rem 1.6rem 1.25rem;
+    margin: 1.6rem -1.6rem -1.6rem; padding: 1rem 1.6rem 1.25rem;
     background: var(--panel); border-top: 1px solid var(--line); border-radius: 0 0 1rem 1rem;
 }
+.cfg-footer.is-clean { display: none; }
 .cfg-dirty { display: inline-flex; align-items: center; gap: .4rem; font-size: .8rem; color: var(--aws-orange-soft); margin-right: auto; }
 @media (max-width: 639px) { .cfg-dirty { margin-right: 0; width: 100%; justify-content: center; } }
 
